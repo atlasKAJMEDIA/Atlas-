@@ -1,43 +1,71 @@
-const ANTHROPIC_VERSION = "2023-06-01";
-const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
+/* Atlas AI proxy — Virtuals compute gateway (OpenAI-compatible chat completions).
+ *
+ * Runs server-side only so VIRTUALS_API_KEY is never shipped to the browser.
+ * Virtuals fronts Claude models through an OpenAI-shaped /chat/completions
+ * endpoint, so the request/response shape here is OpenAI's, not Anthropic's.
+ */
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const DEFAULT_BASE = "https://compute.virtuals.io/v1";
+const DEFAULT_MODEL = "claude-opus-4-7-fast";
 
 export async function POST(request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.VIRTUALS_API_KEY;
   if (!apiKey) {
     return Response.json(
-      { error: "Server is missing ANTHROPIC_API_KEY. Set it in your Vercel project's Environment Variables." },
+      { error: "Server is missing VIRTUALS_API_KEY. Add it in Vercel → Settings → Environment Variables." },
       { status: 500 }
     );
   }
 
-  const { system, user, tools } = await request.json();
-
-  const body = {
-    model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
-    max_tokens: 1000,
-    system,
-    messages: [{ role: "user", content: user }],
-  };
-  if (tools) body.tools = tools;
-
-  const headers = {
-    "Content-Type": "application/json",
-    "x-api-key": apiKey,
-    "anthropic-version": ANTHROPIC_VERSION,
-  };
-  if (Array.isArray(tools) && tools.some((t) => t.type?.startsWith("web_search"))) {
-    headers["anthropic-beta"] = "web-search-2025-03-05";
+  let system, user;
+  try {
+    ({ system, user } = await request.json());
+  } catch {
+    return Response.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
+  const base = (process.env.VIRTUALS_BASE_URL || DEFAULT_BASE).replace(/\/+$/, "");
+  const model = process.env.VIRTUALS_MODEL || DEFAULT_MODEL;
+
+  let res, data;
+  try {
+    res = await fetch(`${base}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        max_tokens: 1200,
+        temperature: 0.7,
+      }),
+    });
+    data = await res.json();
+  } catch (e) {
+    return Response.json({ error: `Could not reach the Virtuals gateway: ${e.message}` }, { status: 502 });
+  }
 
   if (!res.ok) {
-    return Response.json({ error: data?.error?.message || `Anthropic API ${res.status}` }, { status: res.status });
+    const detail = data?.error?.message || data?.message || `Virtuals API ${res.status}`;
+    return Response.json({ error: detail }, { status: res.status });
   }
-  return Response.json(data);
+
+  // Standard OpenAI chat-completions shape. If the gateway ever returns a
+  // different envelope, surface that instead of silently handing back "".
+  const text = data?.choices?.[0]?.message?.content ?? "";
+  if (!text) {
+    return Response.json(
+      { error: `Gateway returned no message content (top-level keys: ${Object.keys(data || {}).join(", ") || "none"}).` },
+      { status: 502 }
+    );
+  }
+  return Response.json({ text });
 }

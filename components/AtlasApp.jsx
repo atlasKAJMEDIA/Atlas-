@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
-  Wallet, LayoutDashboard, Building2, Radar, Network, GitBranch,
+  Wallet, Home, BarChart3, Zap, Leaf, Building2,
   ArrowLeft, ArrowRight, RefreshCw, Copy, Check, Sparkles, ExternalLink,
 } from "lucide-react";
 
@@ -10,135 +10,209 @@ import {
    ATLAS — AI Business Development OS for Robinhood Chain
    "Discover Partners. Find Grants. Raise Capital. Grow Faster."
 
-   DESIGN TOKENS  (premium, minimal — Robinhood-native)
-   bg:        #FFFFFF        card:      #F8F8F8
-   border:    #EAEAEA        text-1:    #0E0F12
-   text-2:    #6B7280        text-3:    #9CA3AF
-   accent:    #00C264  (Robinhood-native green — single attention color)
-   accent-hi: #E9FBF1  (accent wash)
-   radius:    18px cards / 10px controls
-   NOTE: accent is one token (--acc). Swap to #FA4616 to revert to orange.
+   DESIGN SYSTEM
+   page       #E3E3E1   surface    #F4F4F2   raised   #FFFFFF
+   ink-1      #14151A   ink-2      #6B7076   ink-3    #9AA0A6
+   feature    #101114 (black card, light type)
+   tiles      orange #F9BE7C · green #A9DDC2 · yellow #F5D46E · blue #B7D5F5
+   primary    #93E3B0 (green, dark type)   contrast #101114 (black, light type)
+   radius     28 card · 20 tile · 16 control · 100 pill
    ============================================================ */
 
 const CSS = `
-  .at { --acc:#00C264; --acc-hi:#E9FBF1; min-height:100vh; background:#FFFFFF; color:#0E0F12;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; display:flex; }
+  .at { --page:#E3E3E1; --surface:#F4F4F2; --raised:#FFFFFF;
+        --ink:#14151A; --ink2:#6B7076; --ink3:#9AA0A6; --line:#E4E4E0;
+        --green:#93E3B0; --tile-o:#F9BE7C; --tile-g:#A9DDC2; --tile-y:#F5D46E; --tile-b:#B7D5F5;
+        min-height:100vh; background:var(--page); color:var(--ink);
+        font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Helvetica,Arial,sans-serif;
+        -webkit-font-smoothing:antialiased; display:flex; justify-content:center; }
   .at * { box-sizing:border-box; }
+  .at button { font-family:inherit; }
 
-  .at-side { width:236px; flex-shrink:0; background:#FAFAFA; border-right:1px solid #EAEAEA;
-    padding:26px 16px; display:flex; flex-direction:column; gap:24px; position:sticky; top:0; height:100vh; }
-  .at-logo { display:flex; align-items:center; gap:9px; padding:0 8px; font-size:16px; font-weight:700; letter-spacing:-0.02em; }
-  .at-logo .mark { width:22px; height:22px; border-radius:6px; background:var(--acc); display:flex; align-items:center; justify-content:center; }
-  .at-nav { display:flex; flex-direction:column; gap:2px; }
-  .at-navitem { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; font-size:14px;
-    color:#6B7280; cursor:pointer; transition:background .15s,color .15s; background:none; border:none; width:100%; text-align:left; }
-  .at-navitem:hover { background:#F1F1F1; }
-  .at-navitem.active { background:var(--acc-hi); color:#0E0F12; font-weight:600; }
-  .at-navitem:disabled { opacity:.4; cursor:not-allowed; }
-  .at-side-foot { margin-top:auto; }
-  .at-wallet-chip { background:#FFFFFF; border:1px solid #EAEAEA; border-radius:12px; padding:11px 13px; font-size:12.5px; }
-  .at-wallet-chip .addr { font-family:ui-monospace,monospace; font-weight:600; color:#0E0F12; }
-  .at-wallet-chip .net { color:#6B7280; margin-top:3px; display:flex; align-items:center; gap:6px; }
-  .at-live { width:7px; height:7px; border-radius:50%; background:var(--acc); box-shadow:0 0 0 3px var(--acc-hi); }
+  .at-shell { width:100%; max-width:560px; background:var(--surface); min-height:100vh;
+    padding:34px 26px 132px; position:relative; }
+  @media (min-width:640px){
+    .at { padding:34px 20px; align-items:flex-start; }
+    .at-shell { min-height:auto; border-radius:34px; box-shadow:0 18px 60px rgba(0,0,0,.10); padding:38px 32px 132px; }
+  }
 
-  .at-main { flex:1; min-width:0; padding:40px 40px 100px; max-width:780px; }
-  .at-right { width:288px; flex-shrink:0; padding:40px 26px; border-left:1px solid #EAEAEA; display:flex; flex-direction:column; gap:16px; }
-  @media (max-width:1080px){ .at-right{ display:none; } }
-  @media (max-width:780px){ .at-side{ display:none; } .at-main{ padding:26px 20px 80px; } }
+  .at-eyebrow { font-size:11.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink3); margin-bottom:12px; }
+  .at-h1 { font-size:34px; line-height:1.12; font-weight:600; letter-spacing:-.032em; margin:0 0 26px; }
+  .at-h1.tight { margin-bottom:16px; }
+  .at-sub { color:var(--ink2); font-size:15px; line-height:1.55; margin:-14px 0 26px; }
+  .at-sec { font-size:11.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink3); margin:28px 0 12px; }
 
-  .at-hero { font-size:33px; line-height:1.18; font-weight:700; letter-spacing:-0.02em; margin:0 0 12px; max-width:600px; }
-  .at-sub { color:#6B7280; font-size:16px; line-height:1.6; max-width:540px; margin-bottom:34px; }
-  .at-eyebrow { font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--acc); margin-bottom:14px; }
+  /* ---------- feature (black) card ---------- */
+  .at-feature { background:#101114; color:#F6F6F4; border-radius:24px; padding:24px 26px 26px; }
+  .at-feature .k { font-size:11.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    color:#8A9099; margin-bottom:14px; }
+  .at-feature .big { font-size:42px; font-weight:600; letter-spacing:-.03em; line-height:1; margin-bottom:14px; }
+  .at-feature .t { font-size:19px; font-weight:600; letter-spacing:-.02em; margin-bottom:6px; }
+  .at-feature .d { font-size:14px; color:#9AA0A8; line-height:1.5; }
+  .at-seg { display:flex; gap:9px; margin-top:22px; }
+  .at-seg span { height:5px; border-radius:100px; flex:1; }
 
-  .at-field { margin-bottom:24px; }
-  .at-label { font-size:13px; font-weight:600; margin-bottom:8px; display:block; }
-  .at-input, .at-textarea { width:100%; background:#FFFFFF; border:1px solid #EAEAEA; border-radius:10px;
-    padding:12px 14px; font-size:14.5px; font-family:inherit; color:#0E0F12; resize:vertical; transition:border-color .15s; }
-  .at-input:focus, .at-textarea:focus { outline:none; border-color:var(--acc); }
+  /* ---------- numbered list ---------- */
+  .at-row { display:flex; align-items:center; gap:15px; padding:15px 0; border-bottom:1px solid var(--line); }
+  .at-row:last-child { border-bottom:none; }
+  .at-num { width:31px; height:31px; border-radius:50%; background:#E8E8E4; color:var(--ink2);
+    font-size:12.5px; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .at-row .lb { flex:1; font-size:15.5px; font-weight:500; letter-spacing:-.01em; }
+  .at-row .rt { font-size:14px; color:var(--ink2); flex-shrink:0; }
 
-  .at-chip-row { display:flex; flex-wrap:wrap; gap:8px; }
-  .at-chip { border:1px solid #EAEAEA; background:#FFFFFF; padding:9px 15px; border-radius:100px; font-size:13.5px;
-    font-weight:500; cursor:pointer; transition:all .15s; }
-  .at-chip:hover { border-color:#0E0F12; }
-  .at-chip.on { background:var(--acc); border-color:var(--acc); color:#FFFFFF; }
+  /* ---------- tiles ---------- */
+  .at-tiles { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .at-tile { border-radius:20px; padding:19px 20px 20px; min-height:152px;
+    display:flex; flex-direction:column; cursor:pointer; transition:transform .15s; }
+  .at-tile:hover { transform:translateY(-2px); }
+  .at-tile .k { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:rgba(20,21,26,.62); margin-bottom:10px; }
+  .at-tile .v { font-size:33px; font-weight:600; letter-spacing:-.035em; line-height:1; }
+  .at-tile .n { margin-top:auto; font-size:13.5px; font-weight:500; color:rgba(20,21,26,.78);
+    line-height:1.35; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 
-  .at-btn { background:var(--acc); color:#FFFFFF; border:none; padding:13px 24px; border-radius:10px; font-size:14.5px;
-    font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:opacity .15s,transform .15s; }
-  .at-btn:hover { opacity:.92; transform:scale(1.01); }
-  .at-btn:disabled { background:#EAEAEA; color:#9CA3AF; cursor:not-allowed; transform:none; }
-  .at-btn-ghost { background:#FFFFFF; border:1px solid #EAEAEA; color:#0E0F12; padding:12px 20px; border-radius:10px;
-    font-size:14px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:border-color .15s; }
-  .at-btn-ghost:hover { border-color:#0E0F12; }
-  .at-btn-sm { padding:8px 14px; font-size:13px; }
-  .at-actions { display:flex; gap:12px; margin-top:8px; flex-wrap:wrap; }
+  /* ---------- cards ---------- */
+  .at-card { background:var(--raised); border-radius:22px; padding:22px 24px; margin-bottom:12px; }
+  .at-card h3 { font-size:16.5px; font-weight:600; letter-spacing:-.02em; margin:0 0 14px; }
+  .at-card p { font-size:14.5px; line-height:1.6; color:var(--ink2); margin:0; }
+  .at-kicker { display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--ink3); margin-bottom:14px; }
+  .at-bullet { display:flex; gap:12px; font-size:14.5px; line-height:1.55; margin-bottom:10px; color:var(--ink); }
+  .at-bullet:last-child { margin-bottom:0; }
+  .at-bullet .b { color:var(--ink3); font-weight:600; flex-shrink:0; width:14px; }
 
-  .at-card { background:#F8F8F8; border:1px solid #EAEAEA; border-radius:18px; padding:22px 24px; margin-bottom:14px;
-    box-shadow:0 2px 8px rgba(0,0,0,.05); }
-  .at-card h3 { font-weight:700; font-size:15.5px; margin:0 0 12px; letter-spacing:-0.01em; }
-  .at-bullet { display:flex; gap:11px; font-size:14.5px; line-height:1.6; margin-bottom:9px; }
-  .at-bullet .n { color:var(--acc); font-weight:700; font-size:12.5px; padding-top:2px; width:20px; flex-shrink:0; }
+  /* ---------- bars ---------- */
+  .at-bar { margin-bottom:17px; }
+  .at-bar:last-child { margin-bottom:0; }
+  .at-bar .hd { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:9px; }
+  .at-bar .hd .l { font-size:14.5px; font-weight:500; }
+  .at-bar .hd .v { font-size:14.5px; font-weight:600; }
+  .at-bar .tr { height:7px; border-radius:100px; background:#E7E7E3; overflow:hidden; }
+  .at-bar .fl { height:100%; border-radius:100px; }
 
-  /* opportunity cards */
-  .at-opp { display:flex; gap:16px; align-items:flex-start; border:1px solid #EAEAEA; border-radius:16px;
-    padding:18px 20px; margin-bottom:12px; cursor:pointer; background:#FFFFFF; transition:border-color .15s,box-shadow .15s; }
-  .at-opp:hover { border-color:var(--acc); box-shadow:0 2px 12px rgba(0,194,100,.08); }
-  .at-score { flex-shrink:0; width:56px; height:56px; border-radius:14px; background:var(--acc-hi); color:#049a4f;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; }
-  .at-score .v { font-size:19px; line-height:1; }
-  .at-score .l { font-size:9px; letter-spacing:0.06em; text-transform:uppercase; margin-top:2px; }
-  .at-opp-body { flex:1; min-width:0; }
-  .at-opp-kind { font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:#9CA3AF; margin-bottom:4px; }
-  .at-opp-name { font-weight:700; font-size:15.5px; margin-bottom:5px; letter-spacing:-0.01em; }
-  .at-opp-why { font-size:13.5px; color:#6B7280; line-height:1.55; }
+  /* ---------- ring ---------- */
+  .at-ring { display:flex; flex-direction:column; align-items:center; margin:6px 0 4px; }
+  .at-ring .wrap { position:relative; }
+  .at-ring .ctr { position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; }
+  .at-ring .num { font-size:54px; font-weight:600; letter-spacing:-.04em; line-height:1; }
+  .at-ring .of { font-size:11.5px; font-weight:600; letter-spacing:.1em; color:var(--ink3); margin-top:7px; }
+  .at-ring .lbl { font-size:19px; font-weight:600; letter-spacing:-.02em; margin-top:18px; }
+  .at-ring .cap { font-size:14.5px; color:var(--ink2); text-align:center; margin-top:7px; line-height:1.5; max-width:330px; }
 
-  .at-tabs { display:flex; gap:6px; margin-bottom:20px; }
-  .at-tab { padding:8px 14px; border-radius:100px; font-size:13px; font-weight:500; cursor:pointer; border:1px solid #EAEAEA; background:#FFFFFF; }
-  .at-tab.on { background:#0E0F12; color:#FFFFFF; border-color:#0E0F12; }
+  /* ---------- controls ---------- */
+  .at-btn { width:100%; background:var(--green); color:#0F1613; border:none; padding:17px 24px;
+    border-radius:17px; font-size:15.5px; font-weight:600; letter-spacing:-.01em; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px; transition:filter .15s; }
+  .at-btn:hover { filter:brightness(.96); }
+  .at-btn:disabled { background:#E4E4E0; color:var(--ink3); cursor:not-allowed; }
+  .at-btn-dark { background:#101114; color:#FAFAF8; }
+  .at-btn-dark:hover { filter:brightness(1.25); }
+  .at-btn-ghost { background:var(--raised); color:var(--ink); }
+  .at-btn-ghost:hover { filter:brightness(.98); }
+  .at-stack { display:flex; flex-direction:column; gap:10px; margin-top:22px; }
 
-  .at-channel-row { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:16px; }
-  .at-channel { padding:8px 14px; border-radius:10px; font-size:13px; font-weight:500; cursor:pointer;
-    border:1px solid #EAEAEA; background:#FFFFFF; }
-  .at-channel.on { background:var(--acc-hi); border-color:var(--acc); color:#049a4f; }
+  .at-field { margin-bottom:20px; }
+  .at-label { font-size:14px; font-weight:600; margin-bottom:9px; display:block; letter-spacing:-.01em; }
+  .at-input, .at-textarea { width:100%; background:var(--raised); border:1px solid transparent;
+    border-radius:16px; padding:15px 17px; font-size:15px; font-family:inherit; color:var(--ink);
+    resize:vertical; transition:border-color .15s; }
+  .at-input::placeholder, .at-textarea::placeholder { color:var(--ink3); }
+  .at-input:focus, .at-textarea:focus { outline:none; border-color:#0F1613; }
 
-  .at-msg { background:#F8F8F8; border:1px solid #EAEAEA; border-radius:16px; padding:20px 22px; margin-bottom:14px; }
-  .at-msg .ch { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--acc); margin-bottom:9px; }
-  .at-msg .subj { font-weight:700; font-size:14.5px; margin-bottom:9px; }
-  .at-msg .body { font-size:14px; line-height:1.65; color:#333; white-space:pre-wrap; }
+  .at-chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .at-chip { border:none; background:var(--raised); color:var(--ink); padding:11px 16px;
+    border-radius:100px; font-size:13.5px; font-weight:500; cursor:pointer; transition:all .15s; }
+  .at-chip:hover { filter:brightness(.97); }
+  .at-chip.on { background:#101114; color:#FAFAF8; }
 
-  .at-onchain { background:#0E0F12; color:#F8F8F8; border-radius:16px; padding:18px 20px; margin-top:8px; }
-  .at-onchain .t { font-size:12px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#9CA3AF; margin-bottom:8px; }
-  .at-onchain .hash { font-family:ui-monospace,monospace; font-size:12.5px; color:var(--acc); word-break:break-all; margin-top:8px; display:flex; align-items:center; gap:6px; }
+  .at-tabs { display:flex; gap:7px; margin-bottom:16px; flex-wrap:wrap; }
+  .at-tab { border:none; background:var(--raised); color:var(--ink2); padding:9px 15px;
+    border-radius:100px; font-size:13px; font-weight:500; cursor:pointer; }
+  .at-tab.on { background:#101114; color:#FAFAF8; }
 
-  .at-back { background:none; border:none; color:#6B7280; font-size:13.5px; cursor:pointer; margin-bottom:20px; padding:0; display:flex; align-items:center; gap:6px; }
-  .at-back:hover { color:#0E0F12; }
-  .at-loading { display:flex; align-items:center; gap:10px; color:#6B7280; font-size:13.5px; margin-bottom:16px; }
-  .at-dot { width:6px; height:6px; border-radius:50%; background:var(--acc); animation:atp 1.1s infinite ease-in-out; }
+  /* ---------- opportunity list ---------- */
+  .at-opp { display:flex; gap:15px; align-items:center; background:var(--raised); border-radius:20px;
+    padding:17px 19px; margin-bottom:10px; cursor:pointer; transition:transform .15s; }
+  .at-opp:hover { transform:translateY(-2px); }
+  .at-opp .sc { width:52px; height:52px; border-radius:15px; flex-shrink:0; display:flex;
+    flex-direction:column; align-items:center; justify-content:center; font-weight:600; color:#14151A; }
+  .at-opp .sc .v { font-size:17px; letter-spacing:-.03em; line-height:1; }
+  .at-opp .sc .l { font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; margin-top:3px; opacity:.65; }
+  .at-opp .bd { flex:1; min-width:0; }
+  .at-opp .kd { font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink3); margin-bottom:4px; }
+  .at-opp .nm { font-size:15.5px; font-weight:600; letter-spacing:-.015em; margin-bottom:4px; }
+  .at-opp .wy { font-size:13.5px; color:var(--ink2); line-height:1.45;
+    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+
+  /* ---------- outreach ---------- */
+  .at-chans { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+  .at-chan { border:none; background:var(--raised); color:var(--ink2); padding:10px 15px;
+    border-radius:100px; font-size:13px; font-weight:500; cursor:pointer; }
+  .at-chan.on { background:var(--green); color:#0F1613; font-weight:600; }
+  .at-msg { background:var(--raised); border-radius:22px; padding:21px 23px; margin-bottom:12px; }
+  .at-msg .ch { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink3); margin-bottom:11px; }
+  .at-msg .sj { font-size:15.5px; font-weight:600; letter-spacing:-.015em; margin-bottom:10px; }
+  .at-msg .bd { font-size:14.5px; line-height:1.65; color:var(--ink2); white-space:pre-wrap; }
+
+  /* ---------- on-chain receipt ---------- */
+  .at-chain { background:#101114; color:#F6F6F4; border-radius:22px; padding:20px 22px; margin-top:12px; }
+  .at-chain .k { font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    color:#8A9099; margin-bottom:9px; }
+  .at-chain .d { font-size:14px; line-height:1.5; color:#C9CDD2; }
+  .at-chain .h { font-family:ui-monospace,SFMono-Regular,monospace; font-size:12.5px; color:var(--green);
+    margin-top:11px; display:flex; align-items:center; gap:7px; word-break:break-all; }
+
+  /* ---------- misc ---------- */
+  .at-back { background:none; border:none; color:var(--ink2); font-size:14px; cursor:pointer;
+    margin-bottom:18px; padding:0; display:flex; align-items:center; gap:7px; }
+  .at-back:hover { color:var(--ink); }
+  .at-backc { width:38px; height:38px; border-radius:50%; background:var(--raised); border:none;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+  .at-hdr { display:flex; align-items:center; gap:13px; margin-bottom:20px; }
+  .at-load { display:flex; align-items:center; gap:10px; color:var(--ink2); font-size:14px; padding:14px 0; }
+  .at-dot { width:6px; height:6px; border-radius:50%; background:var(--ink3); animation:atp 1.1s infinite ease-in-out; }
   .at-dot:nth-child(2){animation-delay:.15s} .at-dot:nth-child(3){animation-delay:.3s}
-  @keyframes atp { 0%,80%,100%{opacity:.25} 40%{opacity:1} }
-  .at-err { color:#D64545; font-size:13.5px; margin-top:10px; }
+  @keyframes atp { 0%,80%,100%{opacity:.22} 40%{opacity:1} }
+  .at-err { background:#FBE9E7; color:#B4362C; border-radius:16px; padding:14px 17px;
+    font-size:14px; line-height:1.5; margin-top:14px; }
 
-  .at-widget { background:#F8F8F8; border:1px solid #EAEAEA; border-radius:16px; padding:16px 18px; }
-  .at-widget .wt { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#9CA3AF; margin-bottom:10px; }
-  .at-widget .wb { font-size:13.5px; line-height:1.55; }
-  .at-widget .muted { color:#9CA3AF; }
-  .at-rep { display:flex; align-items:baseline; gap:6px; }
-  .at-rep .big { font-size:26px; font-weight:700; letter-spacing:-0.02em; }
-  .at-rep .max { font-size:13px; color:#9CA3AF; }
+  /* ---------- bottom nav ---------- */
+  .at-nav { position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    width:calc(100% - 52px); max-width:508px; background:var(--raised); border-radius:23px;
+    padding:9px 8px; display:flex; box-shadow:0 8px 30px rgba(0,0,0,.10); z-index:40; }
+  @media (min-width:640px){ .at-nav { position:sticky; bottom:22px; width:100%; max-width:none;
+    transform:none; left:auto; margin:26px 0 -104px; } }
+  .at-navit { flex:1; border:none; background:none; border-radius:16px; padding:9px 2px 8px;
+    display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer;
+    color:var(--ink3); transition:background .15s,color .15s; }
+  .at-navit span { font-size:10.5px; font-weight:500; letter-spacing:-.005em; }
+  .at-navit:hover:not(:disabled) { color:var(--ink2); }
+  .at-navit.on { background:#DFF3E7; color:var(--ink); }
+  .at-navit.on span { font-weight:600; }
+  .at-navit:disabled { opacity:.32; cursor:not-allowed; }
 
-  .at-connect { min-height:100vh; display:flex; align-items:center; justify-content:center; width:100%; padding:40px; }
-  .at-connect-inner { max-width:440px; text-align:center; }
-  .at-connect .mark-lg { width:56px; height:56px; border-radius:16px; background:var(--acc); margin:0 auto 22px;
+  /* ---------- connect gate ---------- */
+  .at-gate { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:30px 26px; }
+  @media (min-width:640px){ .at-gate { min-height:640px; } }
+  .at-gate-in { width:100%; max-width:390px; text-align:center; }
+  .at-mark { width:60px; height:60px; border-radius:19px; background:var(--green); margin:0 auto 24px;
     display:flex; align-items:center; justify-content:center; }
-  .at-connect h1 { font-size:30px; font-weight:700; letter-spacing:-0.02em; margin:0 0 10px; }
-  .at-connect p { color:#6B7280; font-size:15.5px; line-height:1.6; margin:0 0 28px; }
-  .at-wallet-opts { display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
-  .at-wallet-opt { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border:1px solid #EAEAEA;
-    border-radius:12px; background:#FFFFFF; cursor:pointer; font-size:14.5px; font-weight:500; transition:border-color .15s; }
-  .at-wallet-opt:hover { border-color:var(--acc); }
-  .at-note { font-size:12px; color:#9CA3AF; line-height:1.5; }
+  .at-gate h1 { font-size:33px; font-weight:600; letter-spacing:-.032em; margin:0 0 11px; }
+  .at-gate .p { color:var(--ink2); font-size:15.5px; line-height:1.55; margin:0 0 28px; }
+  .at-wopts { display:flex; flex-direction:column; gap:9px; margin-bottom:20px; }
+  .at-wopt { display:flex; align-items:center; justify-content:space-between; padding:16px 19px;
+    border:none; border-radius:17px; background:var(--raised); cursor:pointer; font-size:15px;
+    font-weight:500; color:var(--ink); transition:filter .15s; }
+  .at-wopt:hover { filter:brightness(.97); }
+  .at-note { font-size:12.5px; color:var(--ink3); line-height:1.55; }
 `;
 
-/* --- Robinhood Chain config (from project spec) --- */
+/* --- Robinhood Chain config (per project spec) --- */
 const RH_CHAIN = {
   chainIdHex: "0xB626", // 46630
   chainId: 46630,
@@ -148,60 +222,106 @@ const RH_CHAIN = {
   currency: "ETH",
 };
 
-/* --- Claude API helper ---
-   Calls our own /api/claude route instead of api.anthropic.com directly.
-   The Anthropic API key lives server-side only (see app/api/claude/route.js) —
-   never expose it in client code. */
-async function callClaude({ system, user, tools }) {
+/* --- AI helper ---
+   Calls our own /api/claude route, which proxies to the Virtuals compute
+   gateway server-side. The API key never reaches the browser. */
+async function callAI({ system, user }) {
   const res = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ system, user, tools }),
+    body: JSON.stringify({ system, user }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "API " + res.status);
-  return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+  if (!res.ok) throw new Error(data.error || "Request failed (" + res.status + ")");
+  return (data.text || "").trim();
 }
+
 function parseJsonLoose(text) {
-  const c = text.replace(/```json/g, "").replace(/```/g, "").trim();
+  const c = text.replace(/```json/gi, "").replace(/```/g, "").trim();
   const s = c.indexOf("{"), e = c.lastIndexOf("}");
   return JSON.parse(s >= 0 && e >= 0 ? c.slice(s, e + 1) : c);
 }
+
 function fakeHash() {
   const h = "0123456789abcdef";
   let s = "0x";
   for (let i = 0; i < 64; i++) s += h[Math.floor(Math.random() * 16)];
   return s;
 }
+
 function LoadingDots({ label }) {
-  return <div className="at-loading"><span className="at-dot" /><span className="at-dot" /><span className="at-dot" /><span>{label}</span></div>;
+  return (
+    <div className="at-load">
+      <span className="at-dot" /><span className="at-dot" /><span className="at-dot" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function Ring({ value, max = 100, size = 196 }) {
+  const stroke = 19;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(1, value / max));
+  return (
+    <div className="wrap" style={{ width: size, height: size }}>
+      <svg width={size} height={size}>
+        <defs>
+          <linearGradient id="atlas-ring" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#F5C86B" />
+            <stop offset="52%" stopColor="#F79055" />
+            <stop offset="100%" stopColor="#F2645C" />
+          </linearGradient>
+        </defs>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#E7E7E3" strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none" stroke="url(#atlas-ring)"
+          strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c}
+          strokeDashoffset={c * (1 - pct)}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: "stroke-dashoffset .9s cubic-bezier(.4,0,.2,1)" }}
+        />
+      </svg>
+      <div className="ctr">
+        <div className="num">{value}</div>
+        <div className="of">OF {max}</div>
+      </div>
+    </div>
+  );
+}
+
+function Bar({ label, value, color }) {
+  return (
+    <div className="at-bar">
+      <div className="hd"><span className="l">{label}</span><span className="v">{value}%</span></div>
+      <div className="tr"><div className="fl" style={{ width: Math.max(0, Math.min(100, value)) + "%", background: color }} /></div>
+    </div>
+  );
 }
 
 const CATEGORIES = ["DeFi Protocol", "Consumer App", "AI Application", "Infrastructure", "Wallet / Trading", "Stablecoin / Payments"];
 const CHANNELS = ["Email", "Telegram", "Discord", "Farcaster", "X", "LinkedIn"];
+const TILE_COLORS = ["var(--tile-o)", "var(--tile-g)", "var(--tile-y)", "var(--tile-b)"];
+const BAR_COLORS = ["#F2795E", "#F5C24E", "#5FCBA4", "#7FB2ED"];
 
 export default function App() {
-  const [wallet, setWallet] = useState(null); // {address, simulated}
-  const [view, setView] = useState("dashboard"); // dashboard | org | intel | opps | workspace
+  const [wallet, setWallet] = useState(null);
+  const [view, setView] = useState("dashboard");
   const [connecting, setConnecting] = useState(false);
 
-  // org profile
   const [org, setOrg] = useState({ name: "", category: "", website: "", desc: "" });
   const [orgRegistered, setOrgRegistered] = useState(false);
   const [orgTx, setOrgTx] = useState(null);
 
-  // intel
   const [intel, setIntel] = useState(null);
   const [intelLoading, setIntelLoading] = useState(false);
   const [intelErr, setIntelErr] = useState("");
 
-  // opportunities
   const [opps, setOpps] = useState([]);
   const [oppLoading, setOppLoading] = useState(false);
   const [oppErr, setOppErr] = useState("");
   const [oppFilter, setOppFilter] = useState("all");
 
-  // workspace
   const [active, setActive] = useState(null);
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -212,19 +332,21 @@ export default function App() {
   const [copied, setCopied] = useState(false);
 
   const shortAddr = wallet ? wallet.address.slice(0, 6) + "…" + wallet.address.slice(-4) : "";
+  const reputation = orgRegistered ? Math.min(100, (intel ? 42 : 12) + opps.length * 4) : 0;
 
   /* ---------- wallet ---------- */
-  const connect = async (simulate) => {
+  const connect = async () => {
     setConnecting(true);
     try {
-      if (!simulate && typeof window !== "undefined" && window.ethereum) {
+      if (typeof window !== "undefined" && window.ethereum) {
         const accts = await window.ethereum.request({ method: "eth_requestAccounts" });
         try {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
             params: [{
               chainId: RH_CHAIN.chainIdHex, chainName: RH_CHAIN.name,
-              rpcUrls: [RH_CHAIN.rpc], nativeCurrency: { name: "Ether", symbol: RH_CHAIN.currency, decimals: 18 },
+              rpcUrls: [RH_CHAIN.rpc],
+              nativeCurrency: { name: "Ether", symbol: RH_CHAIN.currency, decimals: 18 },
               blockExplorerUrls: [RH_CHAIN.explorer],
             }],
           });
@@ -240,7 +362,6 @@ export default function App() {
     }
   };
 
-  /* ---------- register org (on-chain, simulated in preview) ---------- */
   const registerOrg = () => {
     setOrgTx({ pending: true });
     setTimeout(() => {
@@ -255,12 +376,12 @@ export default function App() {
     try {
       const system =
         "You are Atlas, an ecosystem intelligence engine for projects building on Robinhood Chain (an EVM chain bringing TradFi users into crypto). Analyze the given project's position and the broader Web3/onchain BD landscape. Respond ONLY with valid JSON, no fences: " +
-        '{"position":"2-3 sentences on where this project sits in the ecosystem","strengths":["...","..."],"gaps":["...","..."],"ecosystem_moves":["one timely move","another"],"funding_readiness":"one line assessment"}';
+        '{"position":"2-3 sentences on where this project sits in the ecosystem","readiness_score":0-100,"readiness_label":"one or two words e.g. Emerging / Strong / Elevated","strengths":["...","..."],"gaps":["...","..."],"drivers":[{"label":"Ecosystem fit","value":0-100},{"label":"Funding readiness","value":0-100},{"label":"Integration surface","value":0-100}],"ecosystem_moves":["one timely move","another"],"funding_readiness":"one line assessment"}';
       const user = `Project: ${org.name} (${org.category}). ${org.website ? "Site: " + org.website + ". " : ""}What they're building: ${org.desc}`;
-      const text = await callClaude({ system, user, tools: [{ type: "web_search_20250305", name: "web_search" }] });
+      const text = await callAI({ system, user });
       setIntel(parseJsonLoose(text));
     } catch (e) {
-      setIntelErr("Intelligence run failed (" + e.message + "). Try again.");
+      setIntelErr("Intelligence run failed — " + e.message);
     } finally {
       setIntelLoading(false);
     }
@@ -274,11 +395,11 @@ export default function App() {
         "You are Atlas's opportunity discovery engine for Robinhood Chain. Given a project, surface concrete BD opportunities: partnerships, grants, and investors it should pursue. For a testnet ecosystem, generate realistic, plausible opportunity types (protocols to integrate with, grant programs, VC/angel profiles) — clearly archetypal, not fabricated specific claims. Respond ONLY with valid JSON, no fences: " +
         '{"opportunities":[{"id":"1","kind":"partnership","name":"...","score":0-100,"why":"one sentence reason grounded in the project"},{"id":"2","kind":"grant","name":"...","score":0-100,"why":"..."},{"id":"3","kind":"investor","name":"...","score":0-100,"why":"..."}]}. Return 6 total, mixed kinds, scores varied and realistic.';
       const user = `Project: ${org.name} (${org.category}). Building: ${org.desc}. ${intel ? "Ecosystem position: " + intel.position : ""}`;
-      const text = await callClaude({ system, user });
+      const text = await callAI({ system, user });
       const parsed = parseJsonLoose(text);
       setOpps((parsed.opportunities || []).sort((a, b) => b.score - a.score));
     } catch (e) {
-      setOppErr("Discovery failed (" + e.message + "). Try again.");
+      setOppErr("Discovery failed — " + e.message);
     } finally {
       setOppLoading(false);
     }
@@ -297,10 +418,10 @@ export default function App() {
         "You are Atlas's AI research agent. Produce a tight executive brief on why this opportunity fits the project and how to approach it. Respond ONLY with valid JSON, no fences: " +
         '{"summary":"2-3 sentences","fit_points":["...","...","..."],"suggested_action":"one concrete next step"}';
       const user = `Our project: ${org.name} (${org.category}), building ${org.desc}.\nOpportunity: ${o.kind} — ${o.name}. Score ${o.score}. Reason: ${o.why}`;
-      const text = await callClaude({ system, user });
+      const text = await callAI({ system, user });
       setReport(parseJsonLoose(text));
     } catch (e) {
-      setReport({ summary: "Could not generate report.", fit_points: [], suggested_action: "" });
+      setReport({ summary: "Could not generate this brief — " + e.message, fit_points: [], suggested_action: "" });
     } finally {
       setReportLoading(false);
     }
@@ -315,16 +436,19 @@ export default function App() {
         "You are Atlas's outreach engine. Write a personalized " + ch + " message from our project to this opportunity, referencing real ecosystem context, not generic templates. Respond ONLY with valid JSON, no fences: " +
         '{"subject":"(for email/linkedin; short line otherwise)","body":"under 90 words, native to the channel"}';
       const user = `From: ${org.name} (${org.category}), building ${org.desc}.\nTo: ${active.kind} — ${active.name}. Why: ${active.why}. Channel: ${ch}`;
-      const text = await callClaude({ system, user });
-      const parsed = parseJsonLoose(text);
-      setOutreach((prev) => ({ ...prev, [ch]: parsed }));
+      const text = await callAI({ system, user });
+      setOutreach((prev) => ({ ...prev, [ch]: parseJsonLoose(text) }));
     } catch (e) {
-      setOutreach((prev) => ({ ...prev, [ch]: { subject: "", body: "Generation failed — try again." } }));
+      setOutreach((prev) => ({ ...prev, [ch]: { subject: "", body: "Generation failed — " + e.message } }));
     } finally {
       setOutreachLoading(false);
     }
   };
-  useEffect(() => { if (active && !outreach["Email"]) genOutreach("Email"); /* eslint-disable-next-line */ }, [active]);
+
+  useEffect(() => {
+    if (active && !outreach["Email"]) genOutreach("Email");
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [active]);
 
   const logToChain = () => {
     setLogged({ pending: true });
@@ -343,134 +467,176 @@ export default function App() {
     return (
       <div className="at">
         <style>{CSS}</style>
-        <div className="at-connect">
-          <div className="at-connect-inner">
-            <div className="mark-lg"><Network size={26} color="#fff" /></div>
-            <h1>Atlas</h1>
-            <p>The AI Business Development OS for Robinhood Chain. Discover partners, find grants, raise capital — grow faster.</p>
-            <div className="at-wallet-opts">
-              {["MetaMask", "WalletConnect", "Coinbase Wallet", "Robinhood Wallet"].map((w) => (
-                <button key={w} className="at-wallet-opt" onClick={() => connect(false)} disabled={connecting}>
-                  <span>{w}</span><Wallet size={17} color="#9CA3AF" />
-                </button>
-              ))}
+        <div className="at-shell" style={{ paddingBottom: 34 }}>
+          <div className="at-gate">
+            <div className="at-gate-in">
+              <div className="at-mark"><Leaf size={27} color="#0F1613" /></div>
+              <h1>Atlas</h1>
+              <p className="p">The AI Business Development OS for Robinhood Chain. Discover partners, find grants, raise capital — grow faster.</p>
+              <div className="at-wopts">
+                {["MetaMask", "WalletConnect", "Coinbase Wallet", "Rabby", "Robinhood Wallet"].map((w) => (
+                  <button key={w} className="at-wopt" onClick={connect} disabled={connecting}>
+                    <span>{w}</span><Wallet size={18} color="#9AA0A6" />
+                  </button>
+                ))}
+              </div>
+              <p className="at-note">
+                {connecting
+                  ? "Requesting connection…"
+                  : "Connects on Robinhood Chain Testnet (Chain ID 46630). No injected wallet? A simulated testnet wallet lets you explore the full flow."}
+              </p>
             </div>
-            <p className="at-note">
-              {connecting ? "Requesting connection…" : "Connects on Robinhood Chain Testnet (Chain ID 46630). No injected wallet in this preview? A simulated testnet wallet is used so you can explore the flow."}
-            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  /* ================= APP SHELL ================= */
+  /* ================= NAV ================= */
   const NAV = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, on: true },
-    { id: "org", label: "Organization", icon: Building2, on: true },
-    { id: "intel", label: "Intelligence", icon: Sparkles, on: orgRegistered },
-    { id: "opps", label: "Opportunities", icon: Radar, on: orgRegistered },
-    { id: "workspace", label: "Pipeline", icon: GitBranch, on: !!active },
+    { id: "dashboard", label: "Today", icon: Home, on: true },
+    { id: "org", label: "Org", icon: Building2, on: true },
+    { id: "intel", label: "Intel", icon: BarChart3, on: orgRegistered },
+    { id: "opps", label: "Opps", icon: Zap, on: orgRegistered },
+    { id: "workspace", label: "Pipeline", icon: Leaf, on: !!active },
   ];
+
+  const topOpps = opps.slice(0, 4);
+  const drivers = intel?.drivers?.length
+    ? intel.drivers
+    : [
+        { label: "Ecosystem fit", value: 82 },
+        { label: "Funding readiness", value: 61 },
+        { label: "Integration surface", value: 30 },
+      ];
 
   return (
     <div className="at">
       <style>{CSS}</style>
+      <div className="at-shell">
 
-      <div className="at-side">
-        <div className="at-logo"><span className="mark"><Network size={14} color="#fff" /></span>Atlas</div>
-        <div className="at-nav">
-          {NAV.map((n) => (
-            <button key={n.id} className={"at-navitem" + (view === n.id ? " active" : "")} disabled={!n.on} onClick={() => setView(n.id)}>
-              <n.icon size={16} /><span>{n.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="at-side-foot">
-          <div className="at-wallet-chip">
-            <div className="addr">{shortAddr}</div>
-            <div className="net"><span className="at-live" />{wallet.simulated ? "Testnet (simulated)" : "Robinhood Testnet"}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="at-main">
         {/* ---------- DASHBOARD ---------- */}
         {view === "dashboard" && (
           <>
             <div className="at-eyebrow">Robinhood Chain · BD Operating System</div>
-            <h1 className="at-hero">Who should you work with next — and why?</h1>
-            <p className="at-sub">Atlas indexes the ecosystem, scores opportunities, and explains every recommendation. Start by registering your organization on-chain.</p>
+            <h1 className="at-h1">Who should you work with next?</h1>
 
-            {!orgRegistered ? (
-              <div className="at-card">
-                <h3>Get started</h3>
-                <div className="at-bullet"><span className="n">01</span><span>Register your organization — mints your on-chain identity.</span></div>
-                <div className="at-bullet"><span className="n">02</span><span>Run ecosystem intelligence to map your position.</span></div>
-                <div className="at-bullet"><span className="n">03</span><span>Discover scored partnership, grant & investor opportunities.</span></div>
-                <div className="at-actions" style={{ marginTop: 16 }}>
-                  <button className="at-btn" onClick={() => setView("org")}>Set up organization<ArrowRight size={15} /></button>
-                </div>
+            <div className="at-feature">
+              <div className="k">On-chain identity</div>
+              <div className="big">{reputation}</div>
+              <div className="t">{orgRegistered ? org.name || "Your organization" : "Not registered yet"}</div>
+              <div className="d">
+                {orgRegistered
+                  ? `${shortAddr} · reputation ${reputation}/100`
+                  : "Register to mint your Organization ID and start scoring opportunities."}
               </div>
-            ) : (
-              <>
-                <div className="at-card">
-                  <h3>Today's signal</h3>
-                  <div className="at-bullet"><span className="n">→</span><span>{opps.length ? `${opps.length} opportunities discovered — top score ${opps[0].score}/100 (${opps[0].name}).` : "Run discovery to surface today's opportunities."}</span></div>
-                  <div className="at-bullet"><span className="n">→</span><span>{intel ? intel.funding_readiness : "Ecosystem intelligence not run yet."}</span></div>
-                  <div className="at-actions" style={{ marginTop: 14 }}>
-                    <button className="at-btn" onClick={() => setView("opps")}>View opportunities<ArrowRight size={15} /></button>
-                    <button className="at-btn-ghost" onClick={() => setView("intel")}>Intelligence</button>
-                  </div>
-                </div>
-              </>
+              <div className="at-seg">
+                <span style={{ background: orgRegistered ? "#5FCBA4" : "#2A2C31" }} />
+                <span style={{ background: intel ? "#F5C24E" : "#2A2C31" }} />
+                <span style={{ background: opps.length ? "#F2795E" : "#2A2C31" }} />
+                <span style={{ background: logged?.hash ? "#7FB2ED" : "#2A2C31" }} />
+              </div>
+            </div>
+
+            <div className="at-sec">Next steps</div>
+            <div className="at-card" style={{ padding: "6px 22px" }}>
+              <div className="at-row">
+                <span className="at-num">1</span>
+                <span className="lb">Register organization</span>
+                <span className="rt">{orgRegistered ? "Done" : "2 min"}</span>
+              </div>
+              <div className="at-row">
+                <span className="at-num">2</span>
+                <span className="lb">Run ecosystem intelligence</span>
+                <span className="rt">{intel ? "Done" : orgRegistered ? "Ready" : "Locked"}</span>
+              </div>
+              <div className="at-row">
+                <span className="at-num">3</span>
+                <span className="lb">Discover opportunities</span>
+                <span className="rt">{opps.length ? `${opps.length} found` : orgRegistered ? "Ready" : "Locked"}</span>
+              </div>
+            </div>
+
+            {(opps.length > 0 || intel) && (
+              <div className="at-card" style={{ marginTop: 12 }}>
+                <div className="at-kicker"><Zap size={13} /> Today's signal</div>
+                {opps.length > 0 && (
+                  <div className="at-bullet"><span className="b">→</span><span>{opps.length} opportunities scored — top is <strong>{opps[0].name}</strong> at {opps[0].score}/100.</span></div>
+                )}
+                {intel && <div className="at-bullet"><span className="b">→</span><span>{intel.funding_readiness}</span></div>}
+              </div>
             )}
+
+            <div className="at-stack">
+              {!orgRegistered ? (
+                <button className="at-btn" onClick={() => setView("org")}>Set up organization<ArrowRight size={16} /></button>
+              ) : (
+                <>
+                  <button className="at-btn" onClick={() => { setView("opps"); if (!opps.length && !oppLoading) discover(); }}>
+                    View opportunities<ArrowRight size={16} />
+                  </button>
+                  <button className="at-btn at-btn-ghost" onClick={() => { setView("intel"); if (!intel && !intelLoading) runIntel(); }}>
+                    Run intelligence
+                  </button>
+                </>
+              )}
+            </div>
           </>
         )}
 
         {/* ---------- ORGANIZATION ---------- */}
         {view === "org" && (
           <>
-            <div className="at-eyebrow">Organization Profile</div>
-            <h1 className="at-hero">Tell Atlas about your project.</h1>
+            <div className="at-eyebrow">Organization profile</div>
+            <h1 className="at-h1 tight">Tell Atlas about your project.</h1>
             <p className="at-sub">This becomes your on-chain identity — every opportunity Atlas scores is relative to it.</p>
 
             <div className="at-field">
               <label className="at-label">Project name</label>
-              <input className="at-input" value={org.name} placeholder="e.g. Meridian Protocol" onChange={(e) => setOrg({ ...org, name: e.target.value })} />
+              <input className="at-input" value={org.name} placeholder="e.g. Meridian Protocol"
+                onChange={(e) => setOrg({ ...org, name: e.target.value })} />
             </div>
             <div className="at-field">
               <label className="at-label">Category</label>
-              <div className="at-chip-row">
+              <div className="at-chips">
                 {CATEGORIES.map((c) => (
-                  <button key={c} className={"at-chip" + (org.category === c ? " on" : "")} onClick={() => setOrg({ ...org, category: c })}>{c}</button>
+                  <button key={c} className={"at-chip" + (org.category === c ? " on" : "")}
+                    onClick={() => setOrg({ ...org, category: c })}>{c}</button>
                 ))}
               </div>
             </div>
             <div className="at-field">
-              <label className="at-label">Website / docs (optional)</label>
-              <input className="at-input" value={org.website} placeholder="https://" onChange={(e) => setOrg({ ...org, website: e.target.value })} />
+              <label className="at-label">Website / docs <span style={{ color: "var(--ink3)", fontWeight: 400 }}>optional</span></label>
+              <input className="at-input" value={org.website} placeholder="https://"
+                onChange={(e) => setOrg({ ...org, website: e.target.value })} />
             </div>
             <div className="at-field">
               <label className="at-label">What you're building</label>
-              <textarea className="at-textarea" rows={5} value={org.desc} placeholder="What the product does, who it's for, what you need next (partners, grants, capital)..." onChange={(e) => setOrg({ ...org, desc: e.target.value })} />
+              <textarea className="at-textarea" rows={5} value={org.desc}
+                placeholder="What the product does, who it's for, what you need next (partners, grants, capital)…"
+                onChange={(e) => setOrg({ ...org, desc: e.target.value })} />
             </div>
 
             {orgRegistered && orgTx?.hash && (
-              <div className="at-onchain">
-                <div className="t">On-chain identity minted</div>
-                <div style={{ fontSize: 13.5 }}>Registered to ProjectRegistry — you now have an Organization ID.</div>
-                <div className="hash">{orgTx.hash.slice(0, 22)}… <ExternalLink size={12} /></div>
+              <div className="at-chain">
+                <div className="k">On-chain identity minted</div>
+                <div className="d">Registered to ProjectRegistry — you now have an Organization ID.</div>
+                <div className="h">{orgTx.hash.slice(0, 26)}… <ExternalLink size={12} /></div>
               </div>
             )}
 
-            <div className="at-actions" style={{ marginTop: 18 }}>
+            <div className="at-stack">
               {!orgRegistered ? (
-                <button className="at-btn" disabled={!org.name || !org.category || !org.desc || orgTx?.pending} onClick={registerOrg}>
-                  {orgTx?.pending ? "Writing to chain…" : "Register on-chain"}<ArrowRight size={15} />
+                <button className="at-btn at-btn-dark"
+                  disabled={!org.name || !org.category || !org.desc || orgTx?.pending}
+                  onClick={registerOrg}>
+                  {orgTx?.pending ? "Writing to chain…" : "Register on-chain"}
+                  {!orgTx?.pending && <ArrowRight size={16} />}
                 </button>
               ) : (
-                <button className="at-btn" onClick={() => { setView("intel"); if (!intel) runIntel(); }}>Run intelligence<ArrowRight size={15} /></button>
+                <button className="at-btn" onClick={() => { setView("intel"); if (!intel && !intelLoading) runIntel(); }}>
+                  Run intelligence<ArrowRight size={16} />
+                </button>
               )}
             </div>
           </>
@@ -479,33 +645,74 @@ export default function App() {
         {/* ---------- INTELLIGENCE ---------- */}
         {view === "intel" && (
           <>
-            <button className="at-back" onClick={() => setView("org")}><ArrowLeft size={14} />Organization</button>
-            <div className="at-eyebrow">AI Ecosystem Intelligence</div>
-            <h1 className="at-hero">{org.name || "Your project"} — ecosystem position.</h1>
+            <div className="at-hdr">
+              <button className="at-backc" onClick={() => setView("dashboard")}><ArrowLeft size={17} /></button>
+              <div className="at-eyebrow" style={{ margin: 0 }}>Ecosystem intelligence</div>
+            </div>
+
             {!intel && !intelLoading && (
-              <div className="at-actions"><button className="at-btn" onClick={runIntel}><Sparkles size={15} />Run intelligence</button></div>
+              <>
+                <h1 className="at-h1 tight">{org.name || "Your project"} — ecosystem position.</h1>
+                <p className="at-sub">Atlas maps where you sit, what you're strong at, and what's missing.</p>
+                <div className="at-stack" style={{ marginTop: 4 }}>
+                  <button className="at-btn" onClick={runIntel}><Sparkles size={16} />Run intelligence</button>
+                </div>
+              </>
             )}
-            {intelLoading && <LoadingDots label="Indexing ecosystem & analyzing position…" />}
+
+            {intelLoading && (
+              <>
+                <h1 className="at-h1 tight">Reading the ecosystem…</h1>
+                <LoadingDots label="Indexing Robinhood Chain & analyzing position" />
+              </>
+            )}
+
             {intelErr && <div className="at-err">{intelErr}</div>}
+
             {intel && !intelLoading && (
               <>
+                <h1 className="at-h1 tight">Your ecosystem read</h1>
+                <div className="at-ring">
+                  <Ring value={Math.round(intel.readiness_score ?? reputation ?? 68)} max={100} />
+                  <div className="lbl">{intel.readiness_label || "Emerging"}</div>
+                  <div className="cap">{intel.funding_readiness}</div>
+                </div>
+
+                <div className="at-card" style={{ marginTop: 22 }}>
+                  <h3>What drives it</h3>
+                  {drivers.map((d, i) => (
+                    <Bar key={i} label={d.label} value={Math.round(d.value)} color={BAR_COLORS[i % BAR_COLORS.length]} />
+                  ))}
+                </div>
+
                 <div className="at-card">
                   <h3>Position</h3>
-                  <p style={{ fontSize: 14.5, lineHeight: 1.65, margin: 0, color: "#333" }}>{intel.position}</p>
+                  <p>{intel.position}</p>
                 </div>
+
                 <div className="at-card">
                   <h3>Strengths</h3>
-                  {(intel.strengths || []).map((s, i) => <div className="at-bullet" key={i}><span className="n">+</span><span>{s}</span></div>)}
-                  <h3 style={{ marginTop: 16 }}>Gaps</h3>
-                  {(intel.gaps || []).map((s, i) => <div className="at-bullet" key={i}><span className="n">–</span><span>{s}</span></div>)}
+                  {(intel.strengths || []).map((s, i) => (
+                    <div className="at-bullet" key={i}><span className="b">+</span><span>{s}</span></div>
+                  ))}
+                  <h3 style={{ marginTop: 20 }}>Gaps</h3>
+                  {(intel.gaps || []).map((s, i) => (
+                    <div className="at-bullet" key={i}><span className="b">–</span><span>{s}</span></div>
+                  ))}
                 </div>
+
                 <div className="at-card">
                   <h3>Timely moves</h3>
-                  {(intel.ecosystem_moves || []).map((s, i) => <div className="at-bullet" key={i}><span className="n">→</span><span>{s}</span></div>)}
+                  {(intel.ecosystem_moves || []).map((s, i) => (
+                    <div className="at-bullet" key={i}><span className="b">→</span><span>{s}</span></div>
+                  ))}
                 </div>
-                <div className="at-actions">
-                  <button className="at-btn-ghost" onClick={runIntel}><RefreshCw size={14} />Re-run</button>
-                  <button className="at-btn" onClick={() => { setView("opps"); if (!opps.length) discover(); }}>Discover opportunities<ArrowRight size={15} /></button>
+
+                <div className="at-stack">
+                  <button className="at-btn" onClick={() => { setView("opps"); if (!opps.length && !oppLoading) discover(); }}>
+                    Discover opportunities<ArrowRight size={16} />
+                  </button>
+                  <button className="at-btn at-btn-ghost" onClick={runIntel}><RefreshCw size={15} />Re-run</button>
                 </div>
               </>
             )}
@@ -515,19 +722,44 @@ export default function App() {
         {/* ---------- OPPORTUNITIES ---------- */}
         {view === "opps" && (
           <>
-            <button className="at-back" onClick={() => setView("intel")}><ArrowLeft size={14} />Intelligence</button>
-            <div className="at-eyebrow">Opportunity Discovery</div>
-            <h1 className="at-hero">Opportunities, not contacts.</h1>
-            <p className="at-sub">Scored and explained. Partnerships, grants, and investors worth pursuing right now.</p>
+            <div className="at-eyebrow">Opportunity discovery</div>
+            <h1 className="at-h1 tight">Your top opportunities</h1>
 
             {!opps.length && !oppLoading && (
-              <div className="at-actions"><button className="at-btn" onClick={discover}><Radar size={15} />Discover opportunities</button></div>
+              <>
+                <p className="at-sub">Scored and explained — partnerships, grants, and investors worth pursuing right now.</p>
+                <div className="at-stack" style={{ marginTop: 4 }}>
+                  <button className="at-btn" onClick={discover}><Zap size={16} />Discover opportunities</button>
+                </div>
+              </>
             )}
-            {oppLoading && <LoadingDots label="Scanning ecosystem for opportunities…" />}
+
+            {oppLoading && <LoadingDots label="Scanning the ecosystem for opportunities" />}
             {oppErr && <div className="at-err">{oppErr}</div>}
 
             {opps.length > 0 && !oppLoading && (
               <>
+                <div className="at-tiles">
+                  {topOpps.map((o, i) => (
+                    <div key={o.id ?? i} className="at-tile"
+                      style={{ background: TILE_COLORS[i % TILE_COLORS.length] }}
+                      onClick={() => openOpp(o)}>
+                      <div className="k">{o.kind}</div>
+                      <div className="v">{o.score}</div>
+                      <div className="n">{o.name}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="at-card" style={{ marginTop: 14 }}>
+                  <div className="at-kicker"><Zap size={13} /> Strongest signal</div>
+                  <h3 style={{ marginBottom: 10 }}>{opps[0].name}</h3>
+                  <p>{opps[0].why}</p>
+                  <div className="at-sec" style={{ margin: "18px 0 5px" }}>Match score</div>
+                  <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.02em" }}>{opps[0].score} / 100 · {opps[0].kind}</div>
+                </div>
+
+                <div className="at-sec">All opportunities</div>
                 <div className="at-tabs">
                   {["all", "partnership", "grant", "investor"].map((f) => (
                     <button key={f} className={"at-tab" + (oppFilter === f ? " on" : "")} onClick={() => setOppFilter(f)}>
@@ -535,18 +767,22 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-                {opps.filter((o) => oppFilter === "all" || o.kind === oppFilter).map((o) => (
-                  <div className="at-opp" key={o.id} onClick={() => openOpp(o)}>
-                    <div className="at-score"><span className="v">{o.score}</span><span className="l">score</span></div>
-                    <div className="at-opp-body">
-                      <div className="at-opp-kind">{o.kind}</div>
-                      <div className="at-opp-name">{o.name}</div>
-                      <div className="at-opp-why">{o.why}</div>
+
+                {opps.filter((o) => oppFilter === "all" || o.kind === oppFilter).map((o, i) => (
+                  <div className="at-opp" key={o.id ?? i} onClick={() => openOpp(o)}>
+                    <div className="sc" style={{ background: TILE_COLORS[i % TILE_COLORS.length] }}>
+                      <span className="v">{o.score}</span><span className="l">score</span>
+                    </div>
+                    <div className="bd">
+                      <div className="kd">{o.kind}</div>
+                      <div className="nm">{o.name}</div>
+                      <div className="wy">{o.why}</div>
                     </div>
                   </div>
                 ))}
-                <div className="at-actions" style={{ marginTop: 8 }}>
-                  <button className="at-btn-ghost" onClick={discover}><RefreshCw size={14} />Re-discover</button>
+
+                <div className="at-stack">
+                  <button className="at-btn at-btn-ghost" onClick={discover}><RefreshCw size={15} />Re-discover</button>
                 </div>
               </>
             )}
@@ -556,78 +792,87 @@ export default function App() {
         {/* ---------- WORKSPACE ---------- */}
         {view === "workspace" && active && (
           <>
-            <button className="at-back" onClick={() => setView("opps")}><ArrowLeft size={14} />Opportunities</button>
-            <div className="at-eyebrow">{active.kind} · Partnership Workspace</div>
-            <h1 className="at-hero">{active.name}</h1>
+            <div className="at-hdr">
+              <button className="at-backc" onClick={() => setView("opps")}><ArrowLeft size={17} /></button>
+              <div className="at-eyebrow" style={{ margin: 0 }}>{active.kind} workspace</div>
+            </div>
+
+            <h1 className="at-h1 tight">{active.name}</h1>
             <p className="at-sub">{active.why}</p>
 
-            {reportLoading && <LoadingDots label="Researching this opportunity…" />}
+            <div className="at-ring">
+              <Ring value={active.score} max={100} size={172} />
+              <div className="lbl">Match score</div>
+            </div>
+
+            {reportLoading && <LoadingDots label="Researching this opportunity" />}
+
             {report && !reportLoading && (
               <>
-                <div className="at-card">
-                  <h3>Why this fits — score {active.score}/100</h3>
-                  <p style={{ fontSize: 14.5, lineHeight: 1.65, margin: "0 0 14px", color: "#333" }}>{report.summary}</p>
-                  {(report.fit_points || []).map((p, i) => <div className="at-bullet" key={i}><span className="n">→</span><span>{p}</span></div>)}
-                  {report.suggested_action && <p style={{ fontSize: 14, marginTop: 12, color: "#049a4f", fontWeight: 600 }}>Next: {report.suggested_action}</p>}
+                <div className="at-card" style={{ marginTop: 22 }}>
+                  <h3>Why this fits</h3>
+                  <p style={{ marginBottom: 16 }}>{report.summary}</p>
+                  {(report.fit_points || []).map((p, i) => (
+                    <div className="at-bullet" key={i}><span className="b">→</span><span>{p}</span></div>
+                  ))}
+                  {report.suggested_action && (
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
+                      <div className="at-sec" style={{ margin: "0 0 6px" }}>Next action</div>
+                      <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.5 }}>{report.suggested_action}</div>
+                    </div>
+                  )}
                 </div>
 
-                <h3 style={{ fontSize: 15.5, fontWeight: 700, margin: "24px 0 12px" }}>Outreach</h3>
-                <div className="at-channel-row">
+                <div className="at-sec">Outreach</div>
+                <div className="at-chans">
                   {CHANNELS.map((ch) => (
-                    <button key={ch} className={"at-channel" + (channel === ch ? " on" : "")} onClick={() => genOutreach(ch)}>{ch}</button>
+                    <button key={ch} className={"at-chan" + (channel === ch ? " on" : "")}
+                      onClick={() => genOutreach(ch)}>{ch}</button>
                   ))}
                 </div>
-                {outreachLoading && !outreach[channel] && <LoadingDots label={"Writing " + channel + " message…"} />}
+
+                {outreachLoading && !outreach[channel] && <LoadingDots label={"Writing " + channel + " message"} />}
+
                 {outreach[channel] && (
                   <div className="at-msg">
                     <div className="ch">{channel}</div>
-                    {outreach[channel].subject && <div className="subj">{outreach[channel].subject}</div>}
-                    <div className="body">{outreach[channel].body}</div>
+                    {outreach[channel].subject && <div className="sj">{outreach[channel].subject}</div>}
+                    <div className="bd">{outreach[channel].body}</div>
                   </div>
                 )}
-                <div className="at-actions">
-                  <button className="at-btn-ghost at-btn-sm" onClick={copyMsg}>{copied ? <><Check size={14} />Copied</> : <><Copy size={14} />Copy</>}</button>
-                  <button className="at-btn at-btn-sm" disabled={logged?.pending} onClick={logToChain}>
+
+                {logged?.hash && (
+                  <div className="at-chain">
+                    <div className="k">Partnership logged · status draft</div>
+                    <div className="d">Recorded to PartnershipRegistry — visible in your Opportunity Pipeline.</div>
+                    <div className="h">{logged.hash.slice(0, 26)}… <ExternalLink size={12} /></div>
+                  </div>
+                )}
+
+                <div className="at-stack">
+                  <button className="at-btn at-btn-dark" disabled={logged?.pending} onClick={logToChain}>
                     {logged?.pending ? "Logging…" : logged?.hash ? "Logged on-chain" : "Log to Partnership Registry"}
                   </button>
+                  <button className="at-btn at-btn-ghost" onClick={copyMsg}>
+                    {copied ? <><Check size={15} />Copied</> : <><Copy size={15} />Copy message</>}
+                  </button>
                 </div>
-                {logged?.hash && (
-                  <div className="at-onchain">
-                    <div className="t">Partnership logged · status: draft</div>
-                    <div style={{ fontSize: 13.5 }}>Recorded to PartnershipRegistry — visible in your Opportunity Pipeline.</div>
-                    <div className="hash">{logged.hash.slice(0, 24)}… <ExternalLink size={12} /></div>
-                  </div>
-                )}
               </>
             )}
           </>
         )}
-      </div>
 
-      {/* ---------- RIGHT PANEL ---------- */}
-      <div className="at-right">
-        <div className="at-widget">
-          <div className="wt">On-chain identity</div>
-          <div className="wb">
-            <div className="addr" style={{ fontFamily: "ui-monospace,monospace", fontWeight: 600 }}>{shortAddr}</div>
-            <div className="muted" style={{ marginTop: 4 }}>{orgRegistered ? org.name + " · Org registered" : "Org not registered"}</div>
-          </div>
+        {/* ---------- BOTTOM NAV ---------- */}
+        <div className="at-nav">
+          {NAV.map((n) => (
+            <button key={n.id} className={"at-navit" + (view === n.id ? " on" : "")}
+              disabled={!n.on} onClick={() => setView(n.id)}>
+              <n.icon size={19} strokeWidth={1.9} />
+              <span>{n.label}</span>
+            </button>
+          ))}
         </div>
-        <div className="at-widget">
-          <div className="wt">Reputation</div>
-          <div className="at-rep"><span className="big">{orgRegistered ? (intel ? 42 : 12) + opps.length * 3 : 0}</span><span className="max">/ 1000</span></div>
-          <div className="wb muted" style={{ marginTop: 6 }}>Grows with integrations, grants & governance.</div>
-        </div>
-        <div className="at-widget">
-          <div className="wt">Network</div>
-          <div className="wb"><div style={{ display: "flex", alignItems: "center", gap: 7 }}><span className="at-live" />Robinhood Chain Testnet</div><div className="muted" style={{ marginTop: 4 }}>Chain ID 46630</div></div>
-        </div>
-        {opps.length > 0 && (
-          <div className="at-widget">
-            <div className="wt">Pipeline</div>
-            <div className="wb">{opps.length} opportunities · top {opps[0].score}/100</div>
-          </div>
-        )}
+
       </div>
     </div>
   );

@@ -6,14 +6,15 @@ A Next.js app wrapping the Atlas product UI (`components/AtlasApp.jsx`), ready t
 
 - `app/` — Next.js App Router entry (`page.jsx`, `layout.jsx`) and the `api/claude` route.
 - `components/AtlasApp.jsx` — the Atlas UI. Calls `/api/claude` instead of the Anthropic API directly, so no API key is ever shipped to the browser.
-- `app/api/claude/route.js` — server-side proxy that attaches `ANTHROPIC_API_KEY` and forwards requests to Anthropic.
+- `app/api/claude/route.js` — server-side proxy that attaches `VIRTUALS_API_KEY` and forwards requests to the Virtuals compute gateway (OpenAI-compatible `/chat/completions`, model `claude-opus-4-7-fast`).
+- `STATUS.md` — what's built vs. what's left, audited against the product PDF.
 - `scaffold/` — optional on-chain layer (Foundry contracts + wagmi config) for wiring the app to real wallets/contracts on Robinhood Chain instead of the built-in simulated wallet. Not required to deploy the web app.
 
 ## Credentials you need
 
 | Credential | Where to get it | Required for |
 |---|---|---|
-| **Anthropic API key** | [console.anthropic.com](https://console.anthropic.com) → Settings → API Keys → Create Key. Requires a billing method on the account. | The AI features (Intelligence, Discover, reports, outreach). Set as `ANTHROPIC_API_KEY` — server-side only, in Vercel's Environment Variables, never in a `NEXT_PUBLIC_*` var or committed to git. |
+| **Virtuals API key** (`acp-…`) | Your Virtuals compute account. This is **not** an Anthropic key — Virtuals fronts Claude behind an OpenAI-compatible endpoint. | The AI features (Intelligence, Discover, reports, outreach). Set as `VIRTUALS_API_KEY` — server-side only, in Vercel's Environment Variables, never in a `NEXT_PUBLIC_*` var or committed to git. |
 | **GitHub account access to this repo** | You already have this — `atlaskajmedia/atlas-`. | Hosting the source and letting Vercel auto-deploy on push. |
 | **Vercel account** | [vercel.com/signup](https://vercel.com/signup) → sign up/in with GitHub. | Building and hosting the live site. |
 | **WalletConnect / Reown Project ID** *(optional)* | [cloud.reown.com](https://cloud.reown.com) → create a project → copy Project ID. | Only needed if you wire up the real `walletConnect` connector in `scaffold/lib/wagmi.ts`. The deployed app works today with MetaMask/injected or a simulated wallet without this. |
@@ -26,7 +27,8 @@ A Next.js app wrapping the Atlas product UI (`components/AtlasApp.jsx`), ready t
 2. Go to [vercel.com/new](https://vercel.com/new), sign in with GitHub, and import `atlaskajmedia/atlas-`.
 3. Vercel auto-detects Next.js — no build config changes needed.
 4. Before the first deploy (or right after), add environment variables in **Project → Settings → Environment Variables**:
-   - `ANTHROPIC_API_KEY` = your key from the table above.
+   - `VIRTUALS_API_KEY` = your `acp-…` key from the table above.
+   - Optionally `VIRTUALS_MODEL` / `VIRTUALS_BASE_URL` to override the defaults.
 5. Click **Deploy**. You'll get a live URL like `atlas-xyz.vercel.app`.
 6. Every future push to this branch/main will auto-redeploy.
 
@@ -34,7 +36,7 @@ A Next.js app wrapping the Atlas product UI (`components/AtlasApp.jsx`), ready t
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in ANTHROPIC_API_KEY
+cp .env.example .env.local   # then fill in VIRTUALS_API_KEY
 npm run dev
 ```
 
