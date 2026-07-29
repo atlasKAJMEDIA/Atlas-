@@ -1,0 +1,13 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.24"
+
+[rpc_endpoints]
+robinhood_testnet = "https://rpc.testnet.chain.robinhood.com"
+robinhood_mainnet = "https://rpc.mainnet.chain.robinhood.com"
+
+[etherscan]
+robinhood_testnet = { key = "empty", chain = 46630, url = "https://explorer.testnet.chain.robinhood.com/api/" }
+robinhood_mainnet = { key = "empty", chain = 4663,  url = "https://robinhoodchain.blockscout.com/api/" }
