@@ -63,12 +63,22 @@ this from the "Bloomberg Terminal for Robinhood Chain" in the vision.
 
 ---
 
-## Note on the AI provider
+## Note on the AI provider & demo mode
 
-The app calls the **Virtuals compute gateway** (`compute.virtuals.io/v1`), not the Anthropic API
-directly. Virtuals fronts Claude models behind an OpenAI-compatible `/chat/completions`
-endpoint, so `app/api/claude/route.js` speaks the OpenAI request/response shape and reads
-`VIRTUALS_API_KEY`. Model defaults to `claude-opus-4-7-fast`; override with `VIRTUALS_MODEL`.
+The app does **not** call the Anthropic API and is not billed by Anthropic. It has two modes,
+resolved per request in `app/api/claude/route.js`:
+
+- **Demo mode (free).** With no `VIRTUALS_API_KEY`, or `ATLAS_DEMO_MODE=1`, the route generates
+  realistic, project-specific JSON locally for all four call types (intelligence, discovery,
+  research brief, outreach). Zero API calls, zero cost — the recommended setting for demos.
+- **Live mode.** With `VIRTUALS_API_KEY` set, the route calls the **Virtuals compute gateway**
+  (`compute.virtuals.io/v1`), which fronts Claude behind an OpenAI-compatible `/chat/completions`
+  endpoint. Model defaults to `claude-opus-4-7-fast` (override via `VIRTUALS_MODEL`). If the
+  gateway is unreachable it falls back to demo content, so the UI can never render empty.
+
+Because demo content is generated from the user's own inputs (project name, category,
+description, and the selected opportunity), a live demonstration looks and behaves like the
+real thing even with no key attached.
 
 One consequence of the switch: the original code passed Anthropic's `web_search` tool on the
 intelligence run. That tool is Anthropic-API-specific and does not exist in the chat-completions
