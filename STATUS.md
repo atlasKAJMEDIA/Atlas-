@@ -1,86 +1,78 @@
 # Atlas — build status against the spec
 
-Audited against `Atlas on Robinhood Chain` (the product PDF). Last updated with the
-Virtuals AI wiring + design-system rebuild.
+Audited against `Atlas on Robinhood Chain` (the product PDF — both uploaded copies are
+byte-identical, so there is one spec, not two).
 
-**One-line summary:** the *product surface* is largely built — every screen in the spec's
-"Frontend Evolution" exists and works end to end. The *data layer underneath it is not*.
-Every AI output today comes from the model's general knowledge, not from indexed Robinhood
-Chain data, and nothing persists between page refreshes. Those two gaps are what separate
-this from the "Bloomberg Terminal for Robinhood Chain" in the vision.
+**Summary:** the product surface is complete, and the two structural gaps from the last
+audit — no persistence, no ecosystem grounding — are now closed. What remains is almost
+entirely **credential-gated**: the code paths exist and are wired, but they need a key, a
+funded wallet, or a deployed contract address to switch from simulated to live.
 
 ---
 
 ## ✅ Done
 
-| Spec area | What's actually working |
+| Spec area | State |
 |---|---|
-| **Frontend evolution** (all 5 screens) | Project Discovery, Organization Profile, AI Ecosystem Intelligence, Partnership Workspace, Opportunity Pipeline all exist and navigate. The full spec'd mapping is complete. |
-| **Robinhood-native workflow** | Connect → understand project → discover → score → explain why → generate outreach → log on-chain runs start to finish. |
-| **Chain configuration** | Chain ID 46630, RPC, ETH currency, explorer — all correct, and the app auto-prompts `wallet_addEthereumChain` on connect. |
-| **Opportunity Discovery Engine** | Scores 0–100, mixes partnership/grant/investor, gives a reason per opportunity, filterable by kind, sorted by score. Matches the spec's "opportunities not contacts" philosophy. |
-| **AI Research Agent (report layer)** | Generates an executive brief per opportunity: summary, fit points, suggested next action. |
-| **Outreach Engine** | All 6 spec'd channels — Email, Telegram, Discord, Farcaster, X, LinkedIn — each generating channel-native copy. Copy-to-clipboard works. |
-| **Smart contracts (6 of 10) written** | ProjectRegistry, OrganizationRegistry, PartnershipRegistry, GrantRegistry, InvestorRegistry, ReputationRegistry — written, self-contained, compile with plain `forge build`. |
-| **Deployment** | Live-deployable on Vercel. AI key held server-side only, never shipped to the browser. |
-| **Design system** | Rebuilt to the reference: ring gauges, colored opportunity tiles, progress bars, pill nav, black feature cards. |
+| **All frontend screens** | Project Discovery, Organization Profile, Ecosystem Intelligence, Partnership Workspace, Opportunity Pipeline, plus the Relationship Graph. Complete. |
+| **AI Memory** | Every action (register, intel run, discovery, opportunity opened, outreach drafted/sent, partnership logged, status change) is recorded to an append-only log, persisted per wallet, and **fed back into later AI prompts** via `memoryDigest()` so recommendations account for what you already did. Verified surviving a hard page reload. |
+| **Persistence** | `lib/store.js`, keyed by wallet address, versioned, quota-safe. Survives refresh with zero credentials. Swappable driver — point it at a DB later without touching components. |
+| **Relationship graph** | Interactive radial ecosystem map; nodes colored by kind, distance from center reflects match score, click-through to the workspace. |
+| **Ecosystem index (first real layer)** | `/api/ecosystem` reads the **public Robinhood Chain RPC** for live block height and chain ID (no credentials — the RPC is public), merged with a curated set of **verified** entry points: developer docs, testnet faucet, block explorer, the chain developer group, and Alchemy as recommended infra. Discovery prompts are now grounded in these real entities. |
+| **Verified vs. archetype labeling** | Index entries are explicitly flagged. Category placeholders are never presented as real named counterparties. |
+| **All 10 contracts written** | The core six plus **ProposalRegistry, IdentityRegistry, NotificationRegistry, ActivityRegistry** — self-contained, event-emitting, `forge build`-ready. `DeployAll.s.sol` deploys all ten and prints env-ready addresses. |
+| **Team workspace** | Add/remove members with Owner/Admin/Member/Viewer roles, persisted. Maps to `OrganizationRegistry.setMember`. |
+| **Opportunity pipeline** | Full spec'd lifecycle — draft → sent → negotiating → accepted → signed → completed → rejected — persisted and surfaced on the dashboard. |
+| **Reputation** | Now derived from actual recorded activity (intel runs, opportunities, pipeline entries, team size) rather than a display-only constant. |
+| **Multi-chain architecture** | `lib/chains.js` registry with Robinhood testnet/mainnet plus all 10 spec'd expansion targets declared and gated. |
+| **Free demo mode** | Every feature runs at $0 with no key. See "AI provider" below. |
+| **Outreach drafting** | All 6 channels, channel-native copy. |
 
 ---
 
-## 🟡 Partial — works, but not the way the spec describes
+## 🟡 Wired but credential-gated
 
-| Spec area | What's there | What's missing |
+These are **built and connected** — they flip from simulated to live the moment a value exists.
+No code changes required.
+
+| Feature | Switch | What it needs |
 |---|---|---|
-| **Wallet integration** | All 5 wallets listed (MetaMask, WalletConnect, Coinbase, Rabby, Robinhood); injected providers (MetaMask/Rabby) genuinely connect. | WalletConnect and Coinbase need their own SDKs — right now every button uses the injected flow, and falls back to a simulated wallet when none is present. `scaffold/lib/wagmi.ts` has the config ready but isn't wired into the app. |
-| **On-chain identity** | Register mints an Organization ID and returns a tx hash; Partnership logging does the same. | **Both are simulated** (`setTimeout` + a generated hash). The contracts exist but are not deployed, and the frontend does not call them. This is the single biggest "looks done but isn't" item. |
-| **AI Project Intelligence** | Produces category, strengths, gaps, ecosystem position, funding readiness. | The spec says Atlas understands a project *automatically from website, docs, GitHub, whitepaper, smart contract, wallet, and social accounts*. Today the founder types a description and the AI reasons from that alone. No crawling, no repo reading, no contract inspection. Competitor analysis isn't generated at all. |
-| **AI Research Agent (depth)** | Executive brief per opportunity. | Spec calls for real research into audits, tokenomics, TVL, transaction volume, roadmap, team, community, wallet activity. None of those sources are actually consulted. |
-| **Dashboard** | Answers "who should we partner with next, and why". | The other 6 dashboard questions in the spec — which projects launched this week, which grants opened recently, which investors are active, which integrations are highest-impact, who viewed our profile, what's time-sensitive — all require the ecosystem indexer that doesn't exist yet. |
-| **Outreach** | Generates the message. | Doesn't *send* anything. No channel integrations, no reply tracking, no "tracks conversations" step from the workflow. |
+| **Real on-chain writes** | `NEXT_PUBLIC_*_REGISTRY` addresses | Deploy via `forge script script/DeployAll.s.sol` using a funded testnet wallet. `lib/contracts.js` `isLive()` already gates it. Until then, registration and partnership logging are simulated. |
+| **Outreach sending** | Per-channel env vars | `RESEND_API_KEY`+`OUTREACH_FROM_EMAIL` (email), `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID`, `DISCORD_WEBHOOK_URL`, `NEYNAR_API_KEY`+`NEYNAR_SIGNER_UUID` (Farcaster). `/api/outreach` reports exactly which var each channel is missing instead of silently no-opping. |
+| **X / LinkedIn sending** | OAuth flow | These need per-user OAuth, not a static key — declared and surfaced as such rather than pretending. |
+| **Live AI model** | `VIRTUALS_API_KEY` | Optional; demo mode covers demonstrations for free. |
+| **WalletConnect / Coinbase** | `NEXT_PUBLIC_WC_PROJECT_ID` | Injected wallets (MetaMask, Rabby) connect for real today. |
 
 ---
 
-## ❌ Not started
+## ❌ Genuinely not built
 
-| Spec area | Why it matters |
+| Gap | Note |
 |---|---|
-| **Robinhood Ecosystem Intelligence (the indexer)** | The spec's core asset: continuously index projects, developers, wallets, infra, protocols, DEXs, bridges, hackathons, grants, foundation programs, governance, announcements, GitHub activity. **Nothing indexes anything today.** Opportunities are plausible archetypes the model invents, not real counterparties. This is the difference between a demo and the actual product. |
-| **AI Memory** | Spec: remember prior outreach, meetings, grant submissions, investor conversations, follow-ups, accepted/rejected partnerships, and improve recommendations over time. There is **no persistence of any kind** — all state is in-memory React state and is lost on refresh. No database, no user accounts. |
-| **Relationship Graph** | The interactive ecosystem map connecting projects, investors, foundations, partners, developers, protocols, hackathons, grant programs, communities. Not built. |
-| **4 remaining contracts** | ProposalRegistry, IdentityRegistry, NotificationRegistry, ActivityRegistry — named in the spec, not yet written. |
-| **Team workspace** | Spec promises a team workspace with members/permissions/departments on connect. `OrganizationRegistry.sol` supports roles, but there's no UI and no auth. |
-| **Reputation Engine (real)** | Currently a display-only number derived from local UI state. Spec wants it computed from integrations, grants, governance, contributions, collaborations. |
-| **Multi-chain expansion** | Ethereum, Base, Solana, Avalanche, Arbitrum, Optimism, Polygon, Monad, Sui, Aptos. Chain config is currently a single hardcoded object — it's a clean refactor, but nothing exists yet. |
-
----
-
-## Recommended order of work
-
-1. **Persistence first.** Add a database (Postgres/Supabase) + wallet-based auth. Without it, AI Memory, the pipeline, and the dashboard can't exist — and everything a user does today is thrown away. This unblocks the most spec'd features per unit of effort.
-2. **Deploy the 6 contracts and wire them up.** Replace the simulated `setTimeout` writes with real `wagmi` `useWriteContract` calls. Removes the biggest credibility gap in a demo.
-3. **Build a minimal indexer.** Even a thin version — read Robinhood Chain testnet contracts/deployments + a curated grants/investors list — moves opportunities from "invented" to "real", which is the entire product thesis.
-4. **Then** the relationship graph and the remaining 4 contracts, which both depend on 1–3 to have anything to show.
+| **Deep per-project indexing** | The index covers chain config, official entry points, and live chain head. It does **not** yet crawl per-project deployments, GitHub activity per team, a grant calendar, governance proposals, or profile-view tracking. Those need a scheduled crawler + storage, and some need sources that don't publicly exist yet (there is no public Robinhood Chain grants portal — the developer group is the documented route). |
+| **Automatic project understanding** | Spec wants Atlas to read your website, docs, GitHub, whitepaper, and socials automatically. Today the founder types a description. `IdentityRegistry` provides the on-chain half (handle claims + attestation); the crawler is not built. |
+| **Server-side multi-user storage** | Persistence is per-browser. Shared team state needs a database and wallet auth. |
+| **Expansion chains** | Declared in `lib/chains.js`, no indexers built. |
 
 ---
 
 ## Note on the AI provider & demo mode
 
-The app does **not** call the Anthropic API and is not billed by Anthropic. It has two modes,
-resolved per request in `app/api/claude/route.js`:
+Atlas does **not** call the Anthropic API and is not billed by Anthropic. Two modes, resolved
+per request in `app/api/claude/route.js`:
 
-- **Demo mode (free).** With no `VIRTUALS_API_KEY`, or `ATLAS_DEMO_MODE=1`, the route generates
-  realistic, project-specific JSON locally for all four call types (intelligence, discovery,
-  research brief, outreach). Zero API calls, zero cost — the recommended setting for demos.
-- **Live mode.** With `VIRTUALS_API_KEY` set, the route calls the **Virtuals compute gateway**
-  (`compute.virtuals.io/v1`), which fronts Claude behind an OpenAI-compatible `/chat/completions`
-  endpoint. Model defaults to `claude-opus-4-7-fast` (override via `VIRTUALS_MODEL`). If the
-  gateway is unreachable it falls back to demo content, so the UI can never render empty.
+- **Demo mode (free).** No `VIRTUALS_API_KEY`, or `ATLAS_DEMO_MODE=1` → realistic,
+  input-tailored content generated locally. Zero cost. Recommended for demonstrations.
+- **Live mode.** With a key, calls the **Virtuals compute gateway** (`compute.virtuals.io/v1`),
+  which fronts Claude behind an OpenAI-compatible `/chat/completions` endpoint. Model defaults
+  to `claude-opus-4-7-fast`. Falls back to demo content if the gateway is unreachable, so the
+  UI can never render empty.
 
-Because demo content is generated from the user's own inputs (project name, category,
-description, and the selected opportunity), a live demonstration looks and behaves like the
-real thing even with no key attached.
+---
 
-One consequence of the switch: the original code passed Anthropic's `web_search` tool on the
-intelligence run. That tool is Anthropic-API-specific and does not exist in the chat-completions
-contract, so it was removed. Live web grounding now has to come from the indexer in item 3
-above rather than from the model call — which is the right place for it anyway.
+## Recommended next steps
+
+1. **Deploy the 10 contracts** (needs only a faucet-funded throwaway testnet wallet) — removes
+   the last "looks real but is simulated" surface.
+2. **Add a database** for shared/team state and cross-device memory.
+3. **Build the crawler** for per-project and GitHub signals — the remaining index depth.

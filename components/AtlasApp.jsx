@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
-  Wallet, Home, BarChart3, Zap, Leaf, Building2,
-  ArrowLeft, ArrowRight, RefreshCw, Copy, Check, Sparkles, ExternalLink,
+  Wallet, Home, BarChart3, Zap, Leaf, Building2, Network, Send, Plus, Trash2,
+  ArrowLeft, ArrowRight, RefreshCw, Copy, Check, Sparkles, ExternalLink, ShieldCheck,
 } from "lucide-react";
+import { loadState, saveState, remember, memoryDigest, MEMORY_KINDS, PIPELINE_STATUSES } from "../lib/store";
+import { DEFAULT_CHAIN, EXPANSION_CHAINS } from "../lib/chains";
 
 /* ============================================================
    ATLAS — AI Business Development OS for Robinhood Chain
@@ -212,14 +214,14 @@ const CSS = `
   .at-note { font-size:12.5px; color:var(--ink3); line-height:1.55; }
 `;
 
-/* --- Robinhood Chain config (per project spec) --- */
+/* --- Robinhood Chain config (from lib/chains.js) --- */
 const RH_CHAIN = {
-  chainIdHex: "0xB626", // 46630
-  chainId: 46630,
-  name: "Robinhood Chain Testnet",
-  rpc: "https://rpc.testnet.chain.robinhood.com",
-  explorer: "https://explorer.testnet.chain.robinhood.com",
-  currency: "ETH",
+  chainIdHex: DEFAULT_CHAIN.idHex,
+  chainId: DEFAULT_CHAIN.id,
+  name: DEFAULT_CHAIN.name,
+  rpc: DEFAULT_CHAIN.rpc,
+  explorer: DEFAULT_CHAIN.explorer,
+  currency: DEFAULT_CHAIN.currency.symbol,
 };
 
 /* --- AI helper ---
@@ -299,7 +301,45 @@ function Bar({ label, value, color }) {
   );
 }
 
+/* Relationship graph — the spec's "live ecosystem graph connecting projects,
+   investors, foundations, partners… via an interactive ecosystem map".
+   Laid out radially around the org, colored by opportunity kind. */
+function RelationshipGraph({ center, nodes, onSelect }) {
+  const W = 320, H = 320, cx = W / 2, cy = H / 2;
+  const R = 118;
+  const kindColor = { partnership: "#F9BE7C", grant: "#A9DDC2", investor: "#B7D5F5", resource: "#F5D46E" };
+  const placed = nodes.slice(0, 9).map((n, i, arr) => {
+    const a = (i / arr.length) * Math.PI * 2 - Math.PI / 2;
+    const r = R * (0.62 + 0.38 * ((n.score ?? 60) / 100));
+    return { ...n, x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r };
+  });
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      {placed.map((n) => (
+        <line key={"l" + n.id} x1={cx} y1={cy} x2={n.x} y2={n.y}
+          stroke="#D4D4CF" strokeWidth={1 + ((n.score ?? 50) / 100) * 2} />
+      ))}
+      {placed.map((n) => (
+        <g key={n.id} onClick={() => onSelect?.(n)} style={{ cursor: "pointer" }}>
+          <circle cx={n.x} cy={n.y} r={17} fill={kindColor[n.kind] || "#E0E0DC"} />
+          <text x={n.x} y={n.y + 4} textAnchor="middle" fontSize="10.5" fontWeight="600" fill="#14151A">
+            {n.score ?? "·"}
+          </text>
+          <text x={n.x} y={n.y + 31} textAnchor="middle" fontSize="8.5" fill="#6B7076">
+            {(n.name || "").slice(0, 16)}
+          </text>
+        </g>
+      ))}
+      <circle cx={cx} cy={cy} r={31} fill="#101114" />
+      <text x={cx} y={cy + 4} textAnchor="middle" fontSize="10" fontWeight="600" fill="#F6F6F4">
+        {(center || "You").slice(0, 9)}
+      </text>
+    </svg>
+  );
+}
+
 const CATEGORIES = ["DeFi Protocol", "Consumer App", "AI Application", "Infrastructure", "Wallet / Trading", "Stablecoin / Payments"];
+const ROLES = ["Owner", "Admin", "Member", "Viewer"];
 const CHANNELS = ["Email", "Telegram", "Discord", "Farcaster", "X", "LinkedIn"];
 const TILE_COLORS = ["var(--tile-o)", "var(--tile-g)", "var(--tile-y)", "var(--tile-b)"];
 const BAR_COLORS = ["#F2795E", "#F5C24E", "#5FCBA4", "#7FB2ED"];
@@ -331,8 +371,46 @@ export default function App() {
   const [logged, setLogged] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  // AI Memory + team + pipeline + live ecosystem index
+  const [memory, setMemory] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [pipeline, setPipeline] = useState({});
+  const [newMember, setNewMember] = useState({ addr: "", role: "Member" });
+  const [eco, setEco] = useState(null);
+  const [sendState, setSendState] = useState(null);
+  // Which address the in-memory state has been hydrated for. This is state,
+  // not a ref, on purpose: it only flips on the render *after* the loaded
+  // values commit, so the save effect can never write stale empties over them.
+  const [hydratedFor, setHydratedFor] = useState(null);
+
   const shortAddr = wallet ? wallet.address.slice(0, 6) + "…" + wallet.address.slice(-4) : "";
-  const reputation = orgRegistered ? Math.min(100, (intel ? 42 : 12) + opps.length * 4) : 0;
+  // Reputation now reflects real recorded activity, not just UI state.
+  const reputation = orgRegistered
+    ? Math.min(100, 12 + (intel ? 20 : 0) + opps.length * 3 + Object.keys(pipeline).length * 5 + members.length * 2)
+    : 0;
+
+  /* ---------- persistence: hydrate on connect, save on change ---------- */
+  useEffect(() => {
+    if (!wallet?.address || hydratedFor === wallet.address) return;
+    const s = loadState(wallet.address);
+    setOrg(s.org); setOrgRegistered(s.orgRegistered); setOrgTx(s.orgTx);
+    setIntel(s.intel); setOpps(s.opps); setMembers(s.members);
+    setMemory(s.memory); setPipeline(s.pipeline);
+    setHydratedFor(wallet.address);
+  }, [wallet?.address, hydratedFor]);
+
+  useEffect(() => {
+    if (!wallet?.address || hydratedFor !== wallet.address) return;
+    saveState(wallet.address, { org, orgRegistered, orgTx, intel, opps, members, memory, pipeline });
+  }, [wallet?.address, hydratedFor, org, orgRegistered, orgTx, intel, opps, members, memory, pipeline]);
+
+  /* ---------- live ecosystem index ---------- */
+  useEffect(() => {
+    if (!wallet) return;
+    fetch("/api/ecosystem").then((r) => r.json()).then(setEco).catch(() => {});
+  }, [wallet]);
+
+  const log = useCallback((kind, detail) => setMemory((m) => remember(m, kind, detail)), []);
 
   /* ---------- wallet ---------- */
   const connect = async () => {
@@ -377,15 +455,18 @@ export default function App() {
       const system =
         "You are Atlas, an ecosystem intelligence engine for projects building on Robinhood Chain (an EVM chain bringing TradFi users into crypto). Analyze the given project's position and the broader Web3/onchain BD landscape. Respond ONLY with valid JSON, no fences: " +
         '{"position":"2-3 sentences on where this project sits in the ecosystem","readiness_score":0-100,"readiness_label":"one or two words e.g. Emerging / Strong / Elevated","strengths":["...","..."],"gaps":["...","..."],"drivers":[{"label":"Ecosystem fit","value":0-100},{"label":"Funding readiness","value":0-100},{"label":"Integration surface","value":0-100}],"ecosystem_moves":["one timely move","another"],"funding_readiness":"one line assessment"}';
-      const user = `Project: ${org.name} (${org.category}). ${org.website ? "Site: " + org.website + ". " : ""}What they're building: ${org.desc}`;
+      const digest = memoryDigest(memory);
+      const user = `Project: ${org.name} (${org.category}). ${org.website ? "Site: " + org.website + ". " : ""}What they're building: ${org.desc}` +
+        (digest ? "\n\n" + digest : "");
       const text = await callAI({ system, user });
       setIntel(parseJsonLoose(text));
+      log(MEMORY_KINDS.INTEL_RUN, { at: Date.now() });
     } catch (e) {
       setIntelErr("Intelligence run failed — " + e.message);
     } finally {
       setIntelLoading(false);
     }
-  }, [org]);
+  }, [org, memory, log]);
 
   /* ---------- opportunity discovery ---------- */
   const discover = useCallback(async () => {
@@ -394,21 +475,61 @@ export default function App() {
       const system =
         "You are Atlas's opportunity discovery engine for Robinhood Chain. Given a project, surface concrete BD opportunities: partnerships, grants, and investors it should pursue. For a testnet ecosystem, generate realistic, plausible opportunity types (protocols to integrate with, grant programs, VC/angel profiles) — clearly archetypal, not fabricated specific claims. Respond ONLY with valid JSON, no fences: " +
         '{"opportunities":[{"id":"1","kind":"partnership","name":"...","score":0-100,"why":"one sentence reason grounded in the project"},{"id":"2","kind":"grant","name":"...","score":0-100,"why":"..."},{"id":"3","kind":"investor","name":"...","score":0-100,"why":"..."}]}. Return 6 total, mixed kinds, scores varied and realistic.';
-      const user = `Project: ${org.name} (${org.category}). Building: ${org.desc}. ${intel ? "Ecosystem position: " + intel.position : ""}`;
+      const digest = memoryDigest(memory);
+      // Ground discovery in the real ecosystem index so results reference
+      // things that actually exist, not only model-invented counterparties.
+      const verified = eco?.entities?.length
+        ? "\n\nVerified Robinhood Chain entities you may reference (real, from the ecosystem index): " +
+          eco.entities.map((e) => `${e.name} (${e.kind})`).join("; ")
+        : "";
+      const user = `Project: ${org.name} (${org.category}). Building: ${org.desc}. ${intel ? "Ecosystem position: " + intel.position : ""}` +
+        verified + (digest ? "\n\n" + digest : "");
       const text = await callAI({ system, user });
       const parsed = parseJsonLoose(text);
-      setOpps((parsed.opportunities || []).sort((a, b) => b.score - a.score));
+      const found = (parsed.opportunities || []).sort((a, b) => b.score - a.score);
+      setOpps(found);
+      log(MEMORY_KINDS.DISCOVERY_RUN, { count: found.length });
     } catch (e) {
       setOppErr("Discovery failed — " + e.message);
     } finally {
       setOppLoading(false);
     }
-  }, [org, intel]);
+  }, [org, intel, memory, eco, log]);
 
   const openOpp = (o) => {
     setActive(o); setReport(null); setOutreach({}); setLogged(null); setChannel("Email");
+    setSendState(null);
     setView("workspace");
+    log(MEMORY_KINDS.OPP_OPENED, { name: o.name, kind: o.kind });
     genReport(o);
+  };
+
+  /* ---------- pipeline ---------- */
+  const setStatus = (oppId, status, name) => {
+    setPipeline((p) => ({ ...p, [oppId]: { ...(p[oppId] || {}), status, updatedAt: Date.now(), name } }));
+    log(MEMORY_KINDS.STATUS_CHANGED, { name, status });
+  };
+
+  /* ---------- outreach send ---------- */
+  const sendOutreach = async () => {
+    const m = outreach[channel];
+    if (!m || !active) return;
+    setSendState({ pending: true });
+    try {
+      const res = await fetch("/api/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel, to: active.contact || "", subject: m.subject, body: m.body }),
+      });
+      const data = await res.json();
+      setSendState(data);
+      if (data.sent) {
+        log(MEMORY_KINDS.OUTREACH_SENT, { name: active.name, channel });
+        setStatus(active.id, "sent", active.name);
+      }
+    } catch (e) {
+      setSendState({ sent: false, error: e.message });
+    }
   };
 
   const genReport = async (o) => {
@@ -438,6 +559,7 @@ export default function App() {
       const user = `From: ${org.name} (${org.category}), building ${org.desc}.\nTo: ${active.kind} — ${active.name}. Why: ${active.why}. Channel: ${ch}`;
       const text = await callAI({ system, user });
       setOutreach((prev) => ({ ...prev, [ch]: parseJsonLoose(text) }));
+      log(MEMORY_KINDS.OUTREACH_DRAFTED, { name: active.name, channel: ch });
     } catch (e) {
       setOutreach((prev) => ({ ...prev, [ch]: { subject: "", body: "Generation failed — " + e.message } }));
     } finally {
@@ -452,7 +574,19 @@ export default function App() {
 
   const logToChain = () => {
     setLogged({ pending: true });
-    setTimeout(() => setLogged({ pending: false, hash: fakeHash() }), 1300);
+    setTimeout(() => {
+      const hash = fakeHash();
+      setLogged({ pending: false, hash });
+      if (active) {
+        log(MEMORY_KINDS.PARTNERSHIP_LOGGED, { name: active.name, hash });
+        setStatus(active.id, pipeline[active.id]?.status || "draft", active.name);
+      }
+    }, 1300);
+  };
+
+  const registerOrgWithMemory = () => {
+    registerOrg();
+    setTimeout(() => log(MEMORY_KINDS.ORG_REGISTERED, { name: org.name }), 1450);
   };
 
   const copyMsg = () => {
@@ -498,6 +632,7 @@ export default function App() {
     { id: "org", label: "Org", icon: Building2, on: true },
     { id: "intel", label: "Intel", icon: BarChart3, on: orgRegistered },
     { id: "opps", label: "Opps", icon: Zap, on: orgRegistered },
+    { id: "graph", label: "Graph", icon: Network, on: orgRegistered },
     { id: "workspace", label: "Pipeline", icon: Leaf, on: !!active },
   ];
 
@@ -567,6 +702,36 @@ export default function App() {
               </div>
             )}
 
+            {Object.keys(pipeline).length > 0 && (
+              <div className="at-card">
+                <div className="at-kicker"><Leaf size={13} /> Opportunity pipeline</div>
+                {Object.entries(pipeline).slice(0, 5).map(([id, p]) => (
+                  <div className="at-bullet" key={id}>
+                    <span className="b">·</span>
+                    <span><strong>{p.name}</strong> — {p.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {memory.length > 0 && (
+              <div className="at-card">
+                <div className="at-kicker"><Sparkles size={13} /> What Atlas remembers</div>
+                {memory.slice(-4).reverse().map((m) => (
+                  <div className="at-bullet" key={m.id}>
+                    <span className="b">·</span>
+                    <span style={{ color: "var(--ink2)" }}>
+                      {new Date(m.at).toLocaleDateString()} — {m.kind.replace(/_/g, " ")}
+                      {m.detail?.name ? `: ${m.detail.name}` : ""}
+                    </span>
+                  </div>
+                ))}
+                <p style={{ fontSize: 12.5, color: "var(--ink3)", marginTop: 10, lineHeight: 1.5 }}>
+                  {memory.length} events remembered. Future intelligence and discovery runs are told what you've already done.
+                </p>
+              </div>
+            )}
+
             <div className="at-stack">
               {!orgRegistered ? (
                 <button className="at-btn" onClick={() => setView("org")}>Set up organization<ArrowRight size={16} /></button>
@@ -625,11 +790,57 @@ export default function App() {
               </div>
             )}
 
+            {orgRegistered && (
+              <>
+                <div className="at-sec">Team workspace</div>
+                <div className="at-card">
+                  <h3>Members & roles</h3>
+                  <div className="at-row">
+                    <span className="at-num">1</span>
+                    <span className="lb">{shortAddr}</span>
+                    <span className="rt">Owner</span>
+                  </div>
+                  {members.map((m, i) => (
+                    <div className="at-row" key={m.addr + i}>
+                      <span className="at-num">{i + 2}</span>
+                      <span className="lb" style={{ fontFamily: "ui-monospace,monospace", fontSize: 13.5 }}>
+                        {m.addr.slice(0, 6)}…{m.addr.slice(-4)}
+                      </span>
+                      <span className="rt">{m.role}</span>
+                      <button className="at-backc" style={{ width: 30, height: 30 }}
+                        onClick={() => setMembers(members.filter((_, j) => j !== i))}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+                    <input className="at-input" style={{ flex: "1 1 180px" }} placeholder="0x wallet address"
+                      value={newMember.addr} onChange={(e) => setNewMember({ ...newMember, addr: e.target.value })} />
+                    <select className="at-input" style={{ flex: "0 0 120px" }} value={newMember.role}
+                      onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}>
+                      {ROLES.map((r) => <option key={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <button className="at-btn at-btn-ghost" style={{ marginTop: 10 }}
+                    disabled={!/^0x[0-9a-fA-F]{40}$/.test(newMember.addr.trim())}
+                    onClick={() => {
+                      setMembers([...members, { addr: newMember.addr.trim(), role: newMember.role }]);
+                      setNewMember({ addr: "", role: "Member" });
+                    }}>
+                    <Plus size={15} />Add member
+                  </button>
+                  <p style={{ fontSize: 12.5, color: "var(--ink3)", marginTop: 12, lineHeight: 1.5 }}>
+                    Roles map to <code>OrganizationRegistry.setMember</code>. They persist locally now and write on-chain once contract addresses are configured.
+                  </p>
+                </div>
+              </>
+            )}
+
             <div className="at-stack">
               {!orgRegistered ? (
                 <button className="at-btn at-btn-dark"
                   disabled={!org.name || !org.category || !org.desc || orgTx?.pending}
-                  onClick={registerOrg}>
+                  onClick={registerOrgWithMemory}>
                   {orgTx?.pending ? "Writing to chain…" : "Register on-chain"}
                   {!orgTx?.pending && <ArrowRight size={16} />}
                 </button>
@@ -789,6 +1000,75 @@ export default function App() {
           </>
         )}
 
+        {/* ---------- RELATIONSHIP GRAPH ---------- */}
+        {view === "graph" && (
+          <>
+            <div className="at-eyebrow">Ecosystem map</div>
+            <h1 className="at-h1 tight">Your relationship graph</h1>
+            <p className="at-sub">Every opportunity Atlas scores, positioned around your organization. Distance reflects match strength.</p>
+
+            <div className="at-card" style={{ padding: 18 }}>
+              <RelationshipGraph
+                center={org.name || "You"}
+                nodes={opps.length ? opps : (eco?.seed || [])}
+                onSelect={(n) => { if (n.score) openOpp(n); }}
+              />
+            </div>
+
+            {eco?.live && (
+              <div className="at-card">
+                <div className="at-kicker"><ShieldCheck size={13} /> Live chain index</div>
+                <div className="at-bullet"><span className="b">→</span><span>Block height <strong>{eco.live.blockNumber.toLocaleString()}</strong> on chain ID {eco.live.chainId}{eco.live.chainIdMatches ? " (verified)" : ""}.</span></div>
+                <div className="at-bullet"><span className="b">→</span><span>{eco.facts.stack} · gas in {eco.facts.gasToken} · data availability via {eco.facts.dataAvailability}.</span></div>
+              </div>
+            )}
+            {eco && !eco.live && (
+              <div className="at-card">
+                <div className="at-kicker"><ShieldCheck size={13} /> Chain index</div>
+                <p>Live RPC unreachable from this deployment ({eco.liveError}). Showing verified static facts only.</p>
+              </div>
+            )}
+
+            {eco?.entities?.length > 0 && (
+              <div className="at-card">
+                <h3>Verified entry points</h3>
+                {eco.entities.map((e) => (
+                  <div className="at-bullet" key={e.id}>
+                    <span className="b">·</span>
+                    <span>
+                      <strong>{e.name}</strong> — {e.why}
+                      {e.url && <> <a href={e.url} target="_blank" rel="noreferrer" style={{ color: "#0F1613" }}>open ↗</a></>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {eco?.coverage && (
+              <div className="at-card">
+                <h3>Index coverage</h3>
+                {eco.coverage.covered.map((c, i) => (
+                  <div className="at-bullet" key={"c" + i}><span className="b">✓</span><span>{c}</span></div>
+                ))}
+                <h3 style={{ marginTop: 18 }}>Not yet indexed</h3>
+                {eco.coverage.notYetCovered.map((c, i) => (
+                  <div className="at-bullet" key={"n" + i}><span className="b">–</span><span>{c}</span></div>
+                ))}
+              </div>
+            )}
+
+            <div className="at-card">
+              <h3>Expansion targets</h3>
+              <p style={{ marginBottom: 12 }}>Architecture supports these; indexers not yet built.</p>
+              <div className="at-chips">
+                {EXPANSION_CHAINS.map((c) => (
+                  <span key={c.key} className="at-chip" style={{ cursor: "default", opacity: .65 }}>{c.name}</span>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
         {/* ---------- WORKSPACE ---------- */}
         {view === "workspace" && active && (
           <>
@@ -849,9 +1129,31 @@ export default function App() {
                   </div>
                 )}
 
+                <div className="at-sec">Pipeline status</div>
+                <div className="at-tabs">
+                  {PIPELINE_STATUSES.map((s) => (
+                    <button key={s}
+                      className={"at-tab" + ((pipeline[active.id]?.status || "draft") === s ? " on" : "")}
+                      onClick={() => setStatus(active.id, s, active.name)}>
+                      {s[0].toUpperCase() + s.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {sendState && !sendState.pending && (
+                  <div className={sendState.sent ? "at-card" : "at-err"} style={sendState.sent ? { marginTop: 4 } : {}}>
+                    {sendState.sent
+                      ? <><div className="at-kicker"><Check size={13} /> Sent</div><p>Delivered via {channel}. Pipeline moved to sent.</p></>
+                      : (sendState.reason || sendState.error)}
+                  </div>
+                )}
+
                 <div className="at-stack">
                   <button className="at-btn at-btn-dark" disabled={logged?.pending} onClick={logToChain}>
                     {logged?.pending ? "Logging…" : logged?.hash ? "Logged on-chain" : "Log to Partnership Registry"}
+                  </button>
+                  <button className="at-btn" disabled={sendState?.pending} onClick={sendOutreach}>
+                    <Send size={15} />{sendState?.pending ? "Sending…" : "Send " + channel}
                   </button>
                   <button className="at-btn at-btn-ghost" onClick={copyMsg}>
                     {copied ? <><Check size={15} />Copied</> : <><Copy size={15} />Copy message</>}
