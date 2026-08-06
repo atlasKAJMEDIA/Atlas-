@@ -48,6 +48,15 @@ const CSS = `
   /* pill badge like the "Features" tag */
   .hx-badge { display:inline-block; background:var(--green-dk); color:#EAFBE7; font-size:12px;
     font-weight:600; letter-spacing:.01em; padding:7px 16px; border-radius:100px; margin-bottom:16px; }
+  /* persistent brand wordmark, top of every page */
+  .hx-brand { display:flex; align-items:center; gap:9px; margin-bottom:26px; }
+  .hx-brand .m { width:27px; height:27px; border-radius:8px; background:var(--lime);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .hx-brand .w { font-size:19px; font-weight:700; letter-spacing:-.04em; color:var(--ink); }
+  .hx-brand .w b { color:var(--green); font-weight:700; }
+  /* connect-gate wordmark, sits above the logo */
+  .hx-wordmark { font-size:20px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--green-dk); margin-bottom:18px; }
   .hx-eyebrow { font-size:12px; font-weight:500; color:var(--ink2); margin-bottom:14px; }
   .hx-h1 { font-size:36px; line-height:1.1; font-weight:700; letter-spacing:-.035em; margin:0 0 24px; }
   .hx-h1.tight { margin-bottom:14px; }
@@ -482,7 +491,7 @@ export default function App() {
     setIntelLoading(true); setIntelErr("");
     try {
       const system =
-        "You are Helix, an ecosystem intelligence engine for projects building on Robinhood Chain (an EVM chain bringing TradFi users into crypto). Analyze the given project's position and the broader Web3/onchain BD landscape. Respond ONLY with valid JSON, no fences: " +
+        "You are Helix, an ecosystem intelligence engine for projects building on Robinhood Chain (an EVM chain bringing TradFi users into crypto). Analyze the given project's position and the broader Web3/onchain BD landscape. Voice: write like a sharp human copywriter — warm, emotionally intelligent, quietly witty, never corporate or buzzword-y. Confident, never cheesy. Respond ONLY with valid JSON, no fences: " +
         '{"position":"2-3 sentences on where this project sits in the ecosystem","readiness_score":0-100,"readiness_label":"one or two words e.g. Emerging / Strong / Elevated","strengths":["...","..."],"gaps":["...","..."],"drivers":[{"label":"Ecosystem fit","value":0-100},{"label":"Funding readiness","value":0-100},{"label":"Integration surface","value":0-100}],"ecosystem_moves":["one timely move","another"],"funding_readiness":"one line assessment"}';
       const digest = memoryDigest(memory);
       const user = `Project: ${org.name} (${org.category}). ${org.website ? "Site: " + org.website + ". " : ""}What they're building: ${org.desc}` +
@@ -502,7 +511,7 @@ export default function App() {
     setOppLoading(true); setOppErr("");
     try {
       const system =
-        "You are Helix's opportunity discovery engine for Robinhood Chain. Given a project, surface concrete BD opportunities: partnerships, grants, and investors it should pursue. For a testnet ecosystem, generate realistic, plausible opportunity types (protocols to integrate with, grant programs, VC/angel profiles) — clearly archetypal, not fabricated specific claims. Respond ONLY with valid JSON, no fences: " +
+        "You are Helix's opportunity discovery engine for Robinhood Chain. Given a project, surface concrete BD opportunities: partnerships, grants, and investors it should pursue. For a testnet ecosystem, generate realistic, plausible opportunity types (protocols to integrate with, grant programs, VC/angel profiles) — clearly archetypal, not fabricated specific claims. Voice: write like a sharp human copywriter — warm, emotionally intelligent, quietly witty, never corporate or buzzword-y. Confident, never cheesy. Respond ONLY with valid JSON, no fences: " +
         '{"opportunities":[{"id":"1","kind":"partnership","name":"...","score":0-100,"why":"one sentence reason grounded in the project"},{"id":"2","kind":"grant","name":"...","score":0-100,"why":"..."},{"id":"3","kind":"investor","name":"...","score":0-100,"why":"..."}]}. Return 6 total, mixed kinds, scores varied and realistic.';
       const digest = memoryDigest(memory);
       // Ground discovery in the real ecosystem index so results reference
@@ -581,7 +590,7 @@ export default function App() {
     setLeadBusy("brief");
     try {
       const system =
-        "You are Helix's lead qualification engine. Given a lead and the project reaching out, produce a tight brief. Respond ONLY with valid JSON, no fences: " +
+        "You are Helix's lead qualification engine. Given a lead and the project reaching out, produce a tight brief. Voice: write like a sharp human copywriter — warm, emotionally intelligent, quietly witty, never corporate or buzzword-y. Confident, never cheesy. Respond ONLY with valid JSON, no fences: " +
         '{"overview":"2-3 sentences on who they are and why they matter","fit":"one line on why this lead fits","priority":0-100,"angle":"the specific hook to open with","risks":["one risk in approaching them"]}';
       const user =
         `Lead: ${lead.name}, at ${lead.company || "unknown company"}. Role: ${lead.role || "unknown"}. Notes: ${lead.notes || "none"}.\n` +
@@ -603,7 +612,7 @@ export default function App() {
     setLeadBusy("seq");
     try {
       const system =
-        "You are Helix's follow-up sequence engine. Write a multi-touch outreach sequence that escalates politely, gets shorter each step, and always gives the recipient an explicit exit. Respond ONLY with valid JSON, no fences: " +
+        "You are Helix's follow-up sequence engine. Write a multi-touch outreach sequence that escalates politely, gets shorter each step, and always gives the recipient an explicit exit. Voice: write like a sharp human copywriter — warm, emotionally intelligent, quietly witty, never corporate or buzzword-y. Confident, never cheesy. Respond ONLY with valid JSON, no fences: " +
         '{"sequence":[{"step":1,"when":"Day 0","channel":"Email","subject":"...","body":"under 80 words"}],"cadence_note":"one line on the cadence logic"}. Return 4 steps mixing Email and LinkedIn.';
       const user =
         `Lead: ${lead.name}, at ${lead.company || "unknown"}. Role: ${lead.role || "unknown"}. Notes: ${lead.notes || "none"}.\n` +
@@ -653,7 +662,7 @@ export default function App() {
     setReportLoading(true);
     try {
       const system =
-        "You are Helix's AI research agent. Produce a tight executive brief on why this opportunity fits the project and how to approach it. Respond ONLY with valid JSON, no fences: " +
+        "You are Helix's AI research agent. Produce a tight executive brief on why this opportunity fits the project and how to approach it. Voice: write like a sharp human copywriter — warm, emotionally intelligent, quietly witty, never corporate or buzzword-y. Confident, never cheesy. Respond ONLY with valid JSON, no fences: " +
         '{"summary":"2-3 sentences","fit_points":["...","...","..."],"suggested_action":"one concrete next step"}';
       const user = `Our project: ${org.name} (${org.category}), building ${org.desc}.\nOpportunity: ${o.kind} — ${o.name}. Score ${o.score}. Reason: ${o.why}`;
       const text = await callAI({ system, user });
@@ -671,7 +680,7 @@ export default function App() {
     setOutreachLoading(true);
     try {
       const system =
-        "You are Helix's outreach engine. Write a personalized " + ch + " message from our project to this opportunity, referencing real ecosystem context, not generic templates. Respond ONLY with valid JSON, no fences: " +
+        "You are Helix's outreach engine. Write a personalized " + ch + " message from our project to this opportunity, referencing real ecosystem context, not generic templates. Voice: write like a sharp human copywriter — warm, emotionally intelligent, quietly witty, never corporate or buzzword-y. Confident, never cheesy. Respond ONLY with valid JSON, no fences: " +
         '{"subject":"(for email/linkedin; short line otherwise)","body":"under 90 words, native to the channel"}';
       const user = `From: ${org.name} (${org.category}), building ${org.desc}.\nTo: ${active.kind} — ${active.name}. Why: ${active.why}. Channel: ${ch}`;
       const text = await callAI({ system, user });
@@ -721,9 +730,10 @@ export default function App() {
         <div className="hx-shell" style={{ paddingBottom: 34 }}>
           <div className="hx-gate">
             <div className="hx-gate-in">
+              <div className="hx-wordmark">Helix</div>
               <div className="hx-mark"><Leaf size={27} color="#0F1613" /></div>
-              <h1>Your partner in smarter <span className="g">growth decisions</span></h1>
-              <p className="p">Helix is the AI business development OS for Robinhood Chain. Discover partners, find grants, raise capital — effortlessly.</p>
+              <h1>Your unfair advantage in <span className="g">who to know next</span></h1>
+              <p className="p">Everyone tells you to "network." Nobody tells you <em>who</em>, or <em>why</em>, or what to say. Helix does — the business development brain for Robinhood Chain. Partners, grants, capital. Less guessing, more growing.</p>
               <div className="hx-wopts">
                 {["MetaMask", "WalletConnect", "Coinbase Wallet", "Rabby", "Robinhood Wallet"].map((w) => (
                   <button key={w} className="hx-wopt" onClick={connect} disabled={connecting}>
@@ -733,8 +743,8 @@ export default function App() {
               </div>
               <p className="hx-note">
                 {connecting
-                  ? "Requesting connection…"
-                  : "Connects on Robinhood Chain Testnet (Chain ID 46630). No injected wallet? A simulated testnet wallet lets you explore the full flow."}
+                  ? "Knocking on your wallet's door…"
+                  : "Runs on Robinhood Chain Testnet (ID 46630). No wallet handy? We'll hand you a simulated one — kick the tires, no strings, no gas."}
               </p>
             </div>
           </div>
@@ -768,20 +778,26 @@ export default function App() {
       <style>{CSS}</style>
       <div className="hx-shell">
 
+        {/* ---------- BRAND (every page) ---------- */}
+        <div className="hx-brand">
+          <span className="m"><Leaf size={16} color="#14532D" /></span>
+          <span className="w">Heli<b>x</b></span>
+        </div>
+
         {/* ---------- DASHBOARD ---------- */}
         {view === "dashboard" && (
           <>
             <div className="hx-badge">Robinhood Chain</div>
-            <h1 className="hx-h1">Who should you <span className="g">work with</span> next?</h1>
+            <h1 className="hx-h1">Who deserves your <span className="g">next email</span>?</h1>
 
             <div className="hx-feature">
               <div className="k">On-chain identity</div>
               <div className="big">{reputation}</div>
-              <div className="t">{orgRegistered ? org.name || "Your organization" : "Not registered yet"}</div>
+              <div className="t">{orgRegistered ? org.name || "Your organization" : "A blank slate (for now)"}</div>
               <div className="d">
                 {orgRegistered
-                  ? `${shortAddr} · reputation ${reputation}/100`
-                  : "Register to mint your Organization ID and start scoring opportunities."}
+                  ? `${shortAddr} · reputation ${reputation}/100 and climbing`
+                  : "Mint your on-chain identity and watch this number stop being zero."}
               </div>
               <div className="hx-seg">
                 <span style={{ background: orgRegistered ? "#C6F24E" : "#242424" }} />
@@ -792,24 +808,24 @@ export default function App() {
             </div>
 
             <div className="hx-band" style={{ marginTop: 12 }}>
-              <h3>Start growing in 3 easy steps</h3>
+              <h3>Three steps. Then Helix does the staring-at-spreadsheets part.</h3>
               <div className="hx-step">
                 <span className="ic"><Building2 size={16} /></span>
-                <span className="tx"><strong>Register your organization.</strong> Mints your on-chain identity — {orgRegistered ? "done" : "takes about 2 minutes"}.</span>
+                <span className="tx"><strong>Introduce yourself.</strong> One quick profile mints your on-chain identity — {orgRegistered ? "done, and permanent." : "about two minutes, faster than your last standup."}</span>
               </div>
               <div className="hx-step">
                 <span className="ic"><BarChart3 size={16} /></span>
-                <span className="tx"><strong>Run ecosystem intelligence.</strong> {intel ? "Complete — see your position." : orgRegistered ? "Ready when you are." : "Unlocks after registration."}</span>
+                <span className="tx"><strong>Get read for filth (kindly).</strong> {intel ? "Done — your honest position is below." : orgRegistered ? "Ready when your ego is." : "Unlocks once you introduce yourself."}</span>
               </div>
               <div className="hx-step">
                 <span className="ic"><Zap size={16} /></span>
-                <span className="tx"><strong>Discover opportunities.</strong> {opps.length ? `${opps.length} scored and waiting.` : orgRegistered ? "Ready when you are." : "Unlocks after registration."}</span>
+                <span className="tx"><strong>Meet your shortlist.</strong> {opps.length ? `${opps.length} moves, ranked, no fluff.` : orgRegistered ? "Ready when you are." : "Unlocks once you introduce yourself."}</span>
               </div>
             </div>
 
             {(opps.length > 0 || intel) && (
               <div className="hx-card" style={{ marginTop: 12 }}>
-                <div className="hx-kicker"><Zap size={13} /> Today's signal</div>
+                <div className="hx-kicker"><Zap size={13} /> The one thing worth reading today</div>
                 {opps.length > 0 && (
                   <div className="hx-bullet"><span className="bt">→</span><span>{opps.length} opportunities scored — top is <strong>{opps[0].name}</strong> at {opps[0].score}/100.</span></div>
                 )}
@@ -819,7 +835,7 @@ export default function App() {
 
             {Object.keys(pipeline).length > 0 && (
               <div className="hx-card">
-                <div className="hx-kicker"><Leaf size={13} /> Opportunity pipeline</div>
+                <div className="hx-kicker"><Leaf size={13} /> Deals in motion</div>
                 {Object.entries(pipeline).slice(0, 5).map(([id, p]) => (
                   <div className="hx-bullet" key={id}>
                     <span className="bt">·</span>
@@ -831,7 +847,7 @@ export default function App() {
 
             {memory.length > 0 && (
               <div className="hx-card">
-                <div className="hx-kicker"><Sparkles size={13} /> What Helix remembers</div>
+                <div className="hx-kicker"><Sparkles size={13} /> Helix has a memory (unlike your CRM)</div>
                 {memory.slice(-4).reverse().map((m) => (
                   <div className="hx-bullet" key={m.id}>
                     <span className="bt">·</span>
@@ -842,21 +858,21 @@ export default function App() {
                   </div>
                 ))}
                 <p style={{ fontSize: 12.5, color: "var(--ink3)", marginTop: 10, lineHeight: 1.5 }}>
-                  {memory.length} events remembered. Future intelligence and discovery runs are told what you've already done.
+                  {memory.length} things remembered — so Helix stops pitching you people you already emailed.
                 </p>
               </div>
             )}
 
             <div className="hx-stack">
               {!orgRegistered ? (
-                <button className="hx-btn" onClick={() => setView("org")}>Set up organization<ArrowRight size={16} /></button>
+                <button className="hx-btn" onClick={() => setView("org")}>Introduce yourself<ArrowRight size={16} /></button>
               ) : (
                 <>
                   <button className="hx-btn" onClick={() => { setView("opps"); if (!opps.length && !oppLoading) discover(); }}>
-                    View opportunities<ArrowRight size={16} />
+                    Show me the shortlist<ArrowRight size={16} />
                   </button>
                   <button className="hx-btn hx-btn-ghost" onClick={() => { setView("intel"); if (!intel && !intelLoading) runIntel(); }}>
-                    Run intelligence
+                    Read me for filth
                   </button>
                 </>
               )}
@@ -868,8 +884,8 @@ export default function App() {
         {view === "org" && (
           <>
             <div className="hx-badge">Organization</div>
-            <h1 className="hx-h1 tight">Tell Helix about your <span className="g">project</span>.</h1>
-            <p className="hx-sub">This becomes your on-chain identity — every opportunity Helix scores is relative to it.</p>
+            <h1 className="hx-h1 tight">So, what are you <span className="g">actually</span> building?</h1>
+            <p className="hx-sub">Be honest — this becomes your on-chain identity, and every match Helix makes is measured against it. Vague in, vague out.</p>
 
             <div className="hx-field">
               <label className="hx-label">Project name</label>
@@ -893,14 +909,14 @@ export default function App() {
             <div className="hx-field">
               <label className="hx-label">What you're building</label>
               <textarea className="hx-textarea" rows={5} value={org.desc}
-                placeholder="What the product does, who it's for, what you need next (partners, grants, capital)…"
+                placeholder="What it does, who it's for, and what you actually need next — partners, grants, capital, a miracle. Plain words beat buzzwords here."
                 onChange={(e) => setOrg({ ...org, desc: e.target.value })} />
             </div>
 
             {orgRegistered && orgTx?.hash && (
               <div className="hx-chain">
                 <div className="k">On-chain identity minted</div>
-                <div className="d">Registered to ProjectRegistry — you now have an Organization ID.</div>
+                <div className="d">Written to ProjectRegistry. You exist on-chain now — no take-backs, and that's the point.</div>
                 <div className="h">{orgTx.hash.slice(0, 26)}… <ExternalLink size={12} /></div>
               </div>
             )}
@@ -956,12 +972,12 @@ export default function App() {
                 <button className="hx-btn hx-btn-dark"
                   disabled={!org.name || !org.category || !org.desc || orgTx?.pending}
                   onClick={registerOrgWithMemory}>
-                  {orgTx?.pending ? "Writing to chain…" : "Register on-chain"}
+                  {orgTx?.pending ? "Etching you into the chain…" : "Make it official"}
                   {!orgTx?.pending && <ArrowRight size={16} />}
                 </button>
               ) : (
                 <button className="hx-btn" onClick={() => { setView("intel"); if (!intel && !intelLoading) runIntel(); }}>
-                  Run intelligence<ArrowRight size={16} />
+                  See where I stand<ArrowRight size={16} />
                 </button>
               )}
             </div>
@@ -978,18 +994,18 @@ export default function App() {
 
             {!intel && !intelLoading && (
               <>
-                <h1 className="hx-h1 tight">{org.name || "Your project"} — ecosystem position.</h1>
-                <p className="hx-sub">Helix maps where you sit, what you're strong at, and what's missing.</p>
+                <h1 className="hx-h1 tight">{org.name || "Your project"}, <span className="g">without the flattery</span>.</h1>
+                <p className="hx-sub">Where you sit, what you've got, and the gaps your pitch deck politely ignores. This is the friend who tells you there's spinach in your teeth.</p>
                 <div className="hx-stack" style={{ marginTop: 4 }}>
-                  <button className="hx-btn" onClick={runIntel}><Sparkles size={16} />Run intelligence</button>
+                  <button className="hx-btn" onClick={runIntel}><Sparkles size={16} />Give it to me straight</button>
                 </div>
               </>
             )}
 
             {intelLoading && (
               <>
-                <h1 className="hx-h1 tight">Reading the ecosystem…</h1>
-                <LoadingDots label="Indexing Robinhood Chain & analyzing position" />
+                <h1 className="hx-h1 tight">Reading the room…</h1>
+                <LoadingDots label="Indexing the ecosystem and forming honest opinions" />
               </>
             )}
 
@@ -997,7 +1013,7 @@ export default function App() {
 
             {intel && !intelLoading && (
               <>
-                <h1 className="hx-h1 tight">Your <span className="g">ecosystem</span> read</h1>
+                <h1 className="hx-h1 tight">The <span className="g">honest</span> read</h1>
                 <div className="hx-ring">
                   <Ring value={Math.round(intel.readiness_score ?? reputation ?? 68)} max={100} />
                   <div className="lbl">{intel.readiness_label || "Emerging"}</div>
@@ -1036,7 +1052,7 @@ export default function App() {
 
                 <div className="hx-stack">
                   <button className="hx-btn" onClick={() => { setView("opps"); if (!opps.length && !oppLoading) discover(); }}>
-                    Discover opportunities<ArrowRight size={16} />
+                    Fine — show me the moves<ArrowRight size={16} />
                   </button>
                   <button className="hx-btn hx-btn-ghost" onClick={runIntel}><RefreshCw size={15} />Re-run</button>
                 </div>
@@ -1049,18 +1065,18 @@ export default function App() {
         {view === "opps" && (
           <>
             <div className="hx-badge">Discovery</div>
-            <h1 className="hx-h1 tight">Your top <span className="g">opportunities</span></h1>
+            <h1 className="hx-h1 tight">Your shortlist, <span className="g">ranked</span></h1>
 
             {!opps.length && !oppLoading && (
               <>
-                <p className="hx-sub">Scored and explained — partnerships, grants, and investors worth pursuing right now.</p>
+                <p className="hx-sub">Not a contact dump. Partners, grants, and investors worth your Tuesday — each one scored, each one explained, so you never cold-email into the void again.</p>
                 <div className="hx-stack" style={{ marginTop: 4 }}>
-                  <button className="hx-btn" onClick={discover}><Zap size={16} />Discover opportunities</button>
+                  <button className="hx-btn" onClick={discover}><Zap size={16} />Find my next move</button>
                 </div>
               </>
             )}
 
-            {oppLoading && <LoadingDots label="Scanning the ecosystem for opportunities" />}
+            {oppLoading && <LoadingDots label="Hunting for people worth your time" />}
             {oppErr && <div className="hx-err">{oppErr}</div>}
 
             {opps.length > 0 && !oppLoading && (
@@ -1078,7 +1094,7 @@ export default function App() {
                 </div>
 
                 <div className="hx-card" style={{ marginTop: 14 }}>
-                  <div className="hx-kicker"><Zap size={13} /> Strongest signal</div>
+                  <div className="hx-kicker"><Zap size={13} /> If you only do one thing</div>
                   <h3 style={{ marginBottom: 10 }}>{opps[0].name}</h3>
                   <p>{opps[0].why}</p>
                   <div className="hx-sec" style={{ margin: "18px 0 5px" }}>Match score</div>
@@ -1119,8 +1135,8 @@ export default function App() {
         {view === "leads" && !activeLead && (
           <>
             <div className="hx-badge">Leads</div>
-            <h1 className="hx-h1 tight">Your <span className="g">leads</span></h1>
-            <p className="hx-sub">Add or paste a list, let Helix brief each one, then generate a follow-up sequence that actually escalates.</p>
+            <h1 className="hx-h1 tight">Your <span className="g">list</span> (the good kind)</h1>
+            <p className="hx-sub">Paste the names. Helix does the homework on each, then writes follow-ups that escalate with a spine — no "just circling back," no begging.</p>
 
             <div className="hx-tiles" style={{ marginBottom: 14 }}>
               <div className="hx-tile" style={{ background: "var(--tile-b)", minHeight: 108, cursor: "default" }}>
@@ -1141,19 +1157,19 @@ export default function App() {
 
             {showImport && (
               <div className="hx-card">
-                <h3>Paste CSV or TSV</h3>
+                <h3>Drop the list in</h3>
                 <p style={{ marginBottom: 12 }}>One lead per line: <code>name, company, role, contact, notes</code>. A header row is detected automatically.</p>
                 <textarea className="hx-textarea" rows={6} value={importText}
                   placeholder={"Jane Doe, Acme Protocol, Head of BD, jane@acme.xyz, met at ETHDenver\nSam Lee, Northwind, CTO, sam@northwind.io, warm intro from Priya"}
                   onChange={(e) => setImportText(e.target.value)} />
                 <button className="hx-btn" style={{ marginTop: 12 }} disabled={!importText.trim()} onClick={importLeads}>
-                  Import {parseLeads(importText).length || ""} leads
+                  Import {parseLeads(importText).length || ""} and get to work
                 </button>
               </div>
             )}
 
             <div className="hx-card">
-              <h3>Add one manually</h3>
+              <h3>Or add one by hand</h3>
               <div className="hx-field" style={{ marginBottom: 10 }}>
                 <input className="hx-input" placeholder="Name *" value={leadDraft.name}
                   onChange={(e) => setLeadDraft({ ...leadDraft, name: e.target.value })} />
@@ -1171,7 +1187,7 @@ export default function App() {
               <textarea className="hx-textarea" rows={2} placeholder="Brief note — where they came from, what they care about"
                 value={leadDraft.notes} onChange={(e) => setLeadDraft({ ...leadDraft, notes: e.target.value })} />
               <button className="hx-btn" style={{ marginTop: 12 }} disabled={!leadDraft.name.trim()} onClick={addLead}>
-                <Plus size={15} />Add lead
+                <Plus size={15} />Add them
               </button>
             </div>
 
@@ -1191,7 +1207,7 @@ export default function App() {
             ))}
 
             {leads.length === 0 && !showImport && (
-              <p className="hx-note" style={{ marginTop: 8 }}>No leads yet. Paste a list or add one above.</p>
+              <p className="hx-note" style={{ marginTop: 8 }}>Empty in here. Paste a list above and let's give these people a reason to reply.</p>
             )}
           </>
         )}
@@ -1244,22 +1260,22 @@ export default function App() {
               <div className="hx-card">
                 <p style={{ marginBottom: 14 }}>{activeLead.notes || "No notes yet."}</p>
                 <button className="hx-btn" disabled={leadBusy === "brief"} onClick={() => briefLead(activeLead)}>
-                  <Sparkles size={15} />{leadBusy === "brief" ? "Briefing…" : "Generate brief"}
+                  <Sparkles size={15} />{leadBusy === "brief" ? "Reading the tea leaves…" : "Do the homework"}
                 </button>
               </div>
             )}
-            {leadBusy === "brief" && <LoadingDots label="Researching this lead" />}
+            {leadBusy === "brief" && <LoadingDots label="Doing the homework so you don't have to" />}
 
-            <div className="hx-sec">Follow-up sequence</div>
+            <div className="hx-sec">The follow-up sequence</div>
             {!activeLead.sequence && leadBusy !== "seq" && (
               <div className="hx-card">
-                <p style={{ marginBottom: 14 }}>A multi-touch cadence that gets shorter each step and always gives them an exit.</p>
+                <p style={{ marginBottom: 14 }}>Four touches that get shorter and braver, each one leaving the door open. Polite persistence, not desperation.</p>
                 <button className="hx-btn" onClick={() => sequenceLead(activeLead)}>
-                  <Send size={15} />Generate follow-ups
+                  <Send size={15} />Write the follow-ups
                 </button>
               </div>
             )}
-            {leadBusy === "seq" && <LoadingDots label="Writing the follow-up cadence" />}
+            {leadBusy === "seq" && <LoadingDots label="Drafting follow-ups with a backbone" />}
             {activeLead.sequence && leadBusy !== "seq" && (
               <>
                 {(activeLead.sequence.sequence || []).map((s, i) => (
@@ -1293,8 +1309,8 @@ export default function App() {
         {view === "graph" && (
           <>
             <div className="hx-badge">Network</div>
-            <h1 className="hx-h1 tight">Your <span className="g">relationship</span> graph</h1>
-            <p className="hx-sub">Every opportunity Helix scores, positioned around your organization. Distance reflects match strength.</p>
+            <h1 className="hx-h1 tight">Your <span className="g">orbit</span></h1>
+            <p className="hx-sub">Everyone worth knowing, drawn around you. The closer they sit, the more they want what you're building — proximity is destiny here.</p>
 
             <div className="hx-card" style={{ padding: 18 }}>
               <RelationshipGraph
@@ -1374,32 +1390,32 @@ export default function App() {
               <div className="lbl">Match score</div>
             </div>
 
-            {reportLoading && <LoadingDots label="Researching this opportunity" />}
+            {reportLoading && <LoadingDots label="Building the case, so you walk in prepared" />}
 
             {report && !reportLoading && (
               <>
                 <div className="hx-card" style={{ marginTop: 22 }}>
-                  <h3>Why this fits</h3>
+                  <h3>Why this one’s worth it</h3>
                   <p style={{ marginBottom: 16 }}>{report.summary}</p>
                   {(report.fit_points || []).map((p, i) => (
                     <div className="hx-bullet" key={i}><span className="bt">→</span><span>{p}</span></div>
                   ))}
                   {report.suggested_action && (
                     <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
-                      <div className="hx-sec" style={{ margin: "0 0 6px" }}>Next action</div>
+                      <div className="hx-sec" style={{ margin: "0 0 6px" }}>Your move</div>
                       <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.5 }}>{report.suggested_action}</div>
                     </div>
                   )}
                 </div>
 
                 {/* ---- live opportunity scan ---- */}
-                <div className="hx-sec">What's open right now</div>
+                <div className="hx-sec">What's actually open right now</div>
                 {!scans[active.id] && !scanLoading && (
                   <div className="hx-card">
                     <p style={{ marginBottom: 14 }}>
                       Discovery told you <strong>who</strong> to approach. Scan {active.name} to find <strong>what</strong> is actually open there — applications, tracks, and rounds you can act on today.
                     </p>
-                    <button className="hx-btn" onClick={() => runScan(active)}><Radar size={15} />Scan for live openings</button>
+                    <button className="hx-btn" onClick={() => runScan(active)}><Radar size={15} />Show me what's open</button>
                   </div>
                 )}
                 {scanLoading && <LoadingDots label={"Scanning " + active.name + " for current openings"} />}
@@ -1437,13 +1453,13 @@ export default function App() {
                     ))}
                     {scans[active.id].next_step && (
                       <div className="hx-card">
-                        <div className="hx-sec" style={{ margin: "0 0 6px" }}>Best next step</div>
+                        <div className="hx-sec" style={{ margin: "0 0 6px" }}>Do this next</div>
                         <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.5 }}>{scans[active.id].next_step}</div>
                       </div>
                     )}
                     {(scans[active.id].where_to_check || []).length > 0 && (
                       <div className="hx-card">
-                        <h3>Where to confirm</h3>
+                        <h3>Trust, but verify</h3>
                         {scans[active.id].where_to_check.map((u, i) => (
                           <div className="hx-bullet" key={i}>
                             <span className="bt">·</span>
@@ -1458,7 +1474,7 @@ export default function App() {
                   </>
                 )}
 
-                <div className="hx-sec">Outreach</div>
+                <div className="hx-sec">The part where you actually reach out</div>
                 <div className="hx-chans">
                   {CHANNELS.map((ch) => (
                     <button key={ch} className={"hx-chan" + (channel === ch ? " on" : "")}
@@ -1484,7 +1500,7 @@ export default function App() {
                   </div>
                 )}
 
-                <div className="hx-sec">Pipeline status</div>
+                <div className="hx-sec">Where this deal stands</div>
                 <div className="hx-tabs">
                   {PIPELINE_STATUSES.map((s) => (
                     <button key={s}
@@ -1498,14 +1514,14 @@ export default function App() {
                 {sendState && !sendState.pending && (
                   <div className={sendState.sent ? "hx-card" : "hx-err"} style={sendState.sent ? { marginTop: 4 } : {}}>
                     {sendState.sent
-                      ? <><div className="hx-kicker"><Check size={13} /> Sent</div><p>Delivered via {channel}. Pipeline moved to sent.</p></>
+                      ? <><div className="hx-kicker"><Check size={13} /> Sent</div><p>Off it goes — delivered via {channel}. Now we wait, and the deal moves to sent.</p></>
                       : (sendState.reason || sendState.error)}
                   </div>
                 )}
 
                 <div className="hx-stack">
                   <button className="hx-btn hx-btn-dark" disabled={logged?.pending} onClick={logToChain}>
-                    {logged?.pending ? "Logging…" : logged?.hash ? "Logged on-chain" : "Log to Partnership Registry"}
+                    {logged?.pending ? "Committing to the record…" : logged?.hash ? "On the record" : "Put it on-chain"}
                   </button>
                   <button className="hx-btn" disabled={sendState?.pending} onClick={sendOutreach}>
                     <Send size={15} />{sendState?.pending ? "Sending…" : "Send " + channel}
