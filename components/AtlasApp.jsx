@@ -4,8 +4,12 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Wallet, Home, BarChart3, Zap, Leaf, Building2, Network, Send, Plus, Trash2,
   ArrowLeft, ArrowRight, RefreshCw, Copy, Check, Sparkles, ExternalLink, ShieldCheck,
+  Radar, Users,
 } from "lucide-react";
-import { loadState, saveState, remember, memoryDigest, MEMORY_KINDS, PIPELINE_STATUSES } from "../lib/store";
+import {
+  loadState, saveState, remember, memoryDigest, MEMORY_KINDS, PIPELINE_STATUSES,
+  LEAD_STATUSES, makeLead, parseLeads,
+} from "../lib/store";
 import { DEFAULT_CHAIN, EXPANSION_CHAINS } from "../lib/chains";
 
 /* ============================================================
@@ -189,10 +193,11 @@ const CSS = `
     padding:9px 8px; display:flex; box-shadow:0 8px 30px rgba(0,0,0,.10); z-index:40; }
   @media (min-width:640px){ .at-nav { position:sticky; bottom:22px; width:100%; max-width:none;
     transform:none; left:auto; margin:26px 0 -104px; } }
-  .at-navit { flex:1; border:none; background:none; border-radius:16px; padding:9px 2px 8px;
+  .at-navit { flex:1; min-width:0; border:none; background:none; border-radius:14px; padding:9px 1px 8px;
     display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer;
     color:var(--ink3); transition:background .15s,color .15s; }
-  .at-navit span { font-size:10.5px; font-weight:500; letter-spacing:-.005em; }
+  .at-navit span { font-size:9.5px; font-weight:500; letter-spacing:-.01em; max-width:100%;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .at-navit:hover:not(:disabled) { color:var(--ink2); }
   .at-navit.on { background:#DFF3E7; color:var(--ink); }
   .at-navit.on span { font-weight:600; }
@@ -378,6 +383,16 @@ export default function App() {
   const [newMember, setNewMember] = useState({ addr: "", role: "Member" });
   const [eco, setEco] = useState(null);
   const [sendState, setSendState] = useState(null);
+
+  // Live opportunity scan + lead engine
+  const [scans, setScans] = useState({});
+  const [scanLoading, setScanLoading] = useState(false);
+  const [leads, setLeads] = useState([]);
+  const [leadDraft, setLeadDraft] = useState({ name: "", company: "", role: "", contact: "", notes: "" });
+  const [importText, setImportText] = useState("");
+  const [showImport, setShowImport] = useState(false);
+  const [activeLead, setActiveLead] = useState(null);
+  const [leadBusy, setLeadBusy] = useState("");
   // Which address the in-memory state has been hydrated for. This is state,
   // not a ref, on purpose: it only flips on the render *after* the loaded
   // values commit, so the save effect can never write stale empties over them.
@@ -396,13 +411,14 @@ export default function App() {
     setOrg(s.org); setOrgRegistered(s.orgRegistered); setOrgTx(s.orgTx);
     setIntel(s.intel); setOpps(s.opps); setMembers(s.members);
     setMemory(s.memory); setPipeline(s.pipeline);
+    setLeads(s.leads || []); setScans(s.scans || {});
     setHydratedFor(wallet.address);
   }, [wallet?.address, hydratedFor]);
 
   useEffect(() => {
     if (!wallet?.address || hydratedFor !== wallet.address) return;
-    saveState(wallet.address, { org, orgRegistered, orgTx, intel, opps, members, memory, pipeline });
-  }, [wallet?.address, hydratedFor, org, orgRegistered, orgTx, intel, opps, members, memory, pipeline]);
+    saveState(wallet.address, { org, orgRegistered, orgTx, intel, opps, members, memory, pipeline, leads, scans });
+  }, [wallet?.address, hydratedFor, org, orgRegistered, orgTx, intel, opps, members, memory, pipeline, leads, scans]);
 
   /* ---------- live ecosystem index ---------- */
   useEffect(() => {
@@ -508,6 +524,94 @@ export default function App() {
   const setStatus = (oppId, status, name) => {
     setPipeline((p) => ({ ...p, [oppId]: { ...(p[oppId] || {}), status, updatedAt: Date.now(), name } }));
     log(MEMORY_KINDS.STATUS_CHANGED, { name, status });
+  };
+
+  /* ---------- live opportunity scan ----------
+     Discovery says WHO to approach; this says WHAT is open there right now. */
+  const runScan = async (o) => {
+    setScanLoading(true);
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunity: o, project: org }),
+      });
+      const data = await res.json();
+      const parsed = parseJsonLoose(data.text);
+      setScans((s) => ({ ...s, [o.id]: { ...parsed, searchMode: data.searchMode, sources: data.sources || [], at: Date.now() } }));
+      log(MEMORY_KINDS.SCAN_RUN, { name: o.name });
+    } catch (e) {
+      setScans((s) => ({ ...s, [o.id]: { error: e.message } }));
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
+  /* ---------- lead engine ---------- */
+  const addLead = () => {
+    if (!leadDraft.name.trim()) return;
+    setLeads((l) => [...l, makeLead(leadDraft)]);
+    setLeadDraft({ name: "", company: "", role: "", contact: "", notes: "" });
+  };
+
+  const importLeads = () => {
+    const parsed = parseLeads(importText);
+    if (!parsed.length) return;
+    setLeads((l) => [...l, ...parsed]);
+    log(MEMORY_KINDS.LEADS_IMPORTED, { count: parsed.length });
+    setImportText(""); setShowImport(false);
+  };
+
+  const updateLead = (id, patch) => setLeads((l) => l.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+
+  const briefLead = async (lead) => {
+    setLeadBusy("brief");
+    try {
+      const system =
+        "You are Atlas's lead qualification engine. Given a lead and the project reaching out, produce a tight brief. Respond ONLY with valid JSON, no fences: " +
+        '{"overview":"2-3 sentences on who they are and why they matter","fit":"one line on why this lead fits","priority":0-100,"angle":"the specific hook to open with","risks":["one risk in approaching them"]}';
+      const user =
+        `Lead: ${lead.name}, at ${lead.company || "unknown company"}. Role: ${lead.role || "unknown"}. Notes: ${lead.notes || "none"}.\n` +
+        `Project: ${org.name} (${org.category}). Building: ${org.desc}` +
+        (memoryDigest(memory) ? "\n\n" + memoryDigest(memory) : "");
+      const text = await callAI({ system, user });
+      const brief = parseJsonLoose(text);
+      updateLead(lead.id, { brief });
+      setActiveLead((a) => (a && a.id === lead.id ? { ...a, brief } : a));
+      log(MEMORY_KINDS.LEAD_BRIEFED, { name: lead.name });
+    } catch (e) {
+      updateLead(lead.id, { brief: { overview: "Brief failed — " + e.message, fit: "", priority: 0, angle: "", risks: [] } });
+    } finally {
+      setLeadBusy("");
+    }
+  };
+
+  const sequenceLead = async (lead) => {
+    setLeadBusy("seq");
+    try {
+      const system =
+        "You are Atlas's follow-up sequence engine. Write a multi-touch outreach sequence that escalates politely, gets shorter each step, and always gives the recipient an explicit exit. Respond ONLY with valid JSON, no fences: " +
+        '{"sequence":[{"step":1,"when":"Day 0","channel":"Email","subject":"...","body":"under 80 words"}],"cadence_note":"one line on the cadence logic"}. Return 4 steps mixing Email and LinkedIn.';
+      const user =
+        `Lead: ${lead.name}, at ${lead.company || "unknown"}. Role: ${lead.role || "unknown"}. Notes: ${lead.notes || "none"}.\n` +
+        (lead.brief ? `Angle: ${lead.brief.angle}. Fit: ${lead.brief.fit}.\n` : "") +
+        `From: ${org.name} (${org.category}), building ${org.desc}`;
+      const text = await callAI({ system, user });
+      const seq = parseJsonLoose(text);
+      updateLead(lead.id, { sequence: seq });
+      setActiveLead((a) => (a && a.id === lead.id ? { ...a, sequence: seq } : a));
+      log(MEMORY_KINDS.LEAD_SEQUENCED, { name: lead.name });
+    } catch (e) {
+      updateLead(lead.id, { sequence: { sequence: [], cadence_note: "Failed — " + e.message } });
+    } finally {
+      setLeadBusy("");
+    }
+  };
+
+  const setLeadStatus = (lead, status) => {
+    updateLead(lead.id, { status });
+    setActiveLead((a) => (a && a.id === lead.id ? { ...a, status } : a));
+    log(MEMORY_KINDS.LEAD_STATUS, { name: lead.name, status });
   };
 
   /* ---------- outreach send ---------- */
@@ -632,6 +736,7 @@ export default function App() {
     { id: "org", label: "Org", icon: Building2, on: true },
     { id: "intel", label: "Intel", icon: BarChart3, on: orgRegistered },
     { id: "opps", label: "Opps", icon: Zap, on: orgRegistered },
+    { id: "leads", label: "Leads", icon: Users, on: true },
     { id: "graph", label: "Graph", icon: Network, on: orgRegistered },
     { id: "workspace", label: "Pipeline", icon: Leaf, on: !!active },
   ];
@@ -1000,6 +1105,180 @@ export default function App() {
           </>
         )}
 
+        {/* ---------- LEADS ---------- */}
+        {view === "leads" && !activeLead && (
+          <>
+            <div className="at-eyebrow">Lead list</div>
+            <h1 className="at-h1 tight">Your leads</h1>
+            <p className="at-sub">Add or paste a list, let Atlas brief each one, then generate a follow-up sequence that actually escalates.</p>
+
+            <div className="at-tiles" style={{ marginBottom: 14 }}>
+              <div className="at-tile" style={{ background: "var(--tile-b)", minHeight: 108, cursor: "default" }}>
+                <div className="k">Total</div>
+                <div className="v">{leads.length}</div>
+              </div>
+              <div className="at-tile" style={{ background: "var(--tile-g)", minHeight: 108, cursor: "default" }}>
+                <div className="k">Contacted</div>
+                <div className="v">{leads.filter((l) => l.status !== "new").length}</div>
+              </div>
+            </div>
+
+            <div className="at-stack" style={{ marginTop: 0, marginBottom: 16 }}>
+              <button className="at-btn at-btn-ghost" onClick={() => setShowImport(!showImport)}>
+                <Plus size={15} />{showImport ? "Close import" : "Paste a lead list"}
+              </button>
+            </div>
+
+            {showImport && (
+              <div className="at-card">
+                <h3>Paste CSV or TSV</h3>
+                <p style={{ marginBottom: 12 }}>One lead per line: <code>name, company, role, contact, notes</code>. A header row is detected automatically.</p>
+                <textarea className="at-textarea" rows={6} value={importText}
+                  placeholder={"Jane Doe, Acme Protocol, Head of BD, jane@acme.xyz, met at ETHDenver\nSam Lee, Northwind, CTO, sam@northwind.io, warm intro from Priya"}
+                  onChange={(e) => setImportText(e.target.value)} />
+                <button className="at-btn" style={{ marginTop: 12 }} disabled={!importText.trim()} onClick={importLeads}>
+                  Import {parseLeads(importText).length || ""} leads
+                </button>
+              </div>
+            )}
+
+            <div className="at-card">
+              <h3>Add one manually</h3>
+              <div className="at-field" style={{ marginBottom: 10 }}>
+                <input className="at-input" placeholder="Name *" value={leadDraft.name}
+                  onChange={(e) => setLeadDraft({ ...leadDraft, name: e.target.value })} />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input className="at-input" placeholder="Company" value={leadDraft.company}
+                  onChange={(e) => setLeadDraft({ ...leadDraft, company: e.target.value })} />
+                <input className="at-input" placeholder="Role" value={leadDraft.role}
+                  onChange={(e) => setLeadDraft({ ...leadDraft, role: e.target.value })} />
+              </div>
+              <div className="at-field" style={{ marginBottom: 10 }}>
+                <input className="at-input" placeholder="Contact (email / handle)" value={leadDraft.contact}
+                  onChange={(e) => setLeadDraft({ ...leadDraft, contact: e.target.value })} />
+              </div>
+              <textarea className="at-textarea" rows={2} placeholder="Brief note — where they came from, what they care about"
+                value={leadDraft.notes} onChange={(e) => setLeadDraft({ ...leadDraft, notes: e.target.value })} />
+              <button className="at-btn" style={{ marginTop: 12 }} disabled={!leadDraft.name.trim()} onClick={addLead}>
+                <Plus size={15} />Add lead
+              </button>
+            </div>
+
+            {leads.length > 0 && <div className="at-sec">All leads</div>}
+            {leads.map((l, i) => (
+              <div className="at-opp" key={l.id} onClick={() => setActiveLead(l)}>
+                <div className="sc" style={{ background: TILE_COLORS[i % TILE_COLORS.length] }}>
+                  <span className="v">{l.brief?.priority ?? "–"}</span>
+                  <span className="l">{l.brief ? "prio" : "new"}</span>
+                </div>
+                <div className="bd">
+                  <div className="kd">{l.status}{l.company ? " · " + l.company : ""}</div>
+                  <div className="nm">{l.name}</div>
+                  <div className="wy">{l.brief?.fit || l.role || l.notes || "No brief yet — open to generate one."}</div>
+                </div>
+              </div>
+            ))}
+
+            {leads.length === 0 && !showImport && (
+              <p className="at-note" style={{ marginTop: 8 }}>No leads yet. Paste a list or add one above.</p>
+            )}
+          </>
+        )}
+
+        {/* ---------- LEAD DETAIL ---------- */}
+        {view === "leads" && activeLead && (
+          <>
+            <div className="at-hdr">
+              <button className="at-backc" onClick={() => setActiveLead(null)}><ArrowLeft size={17} /></button>
+              <div className="at-eyebrow" style={{ margin: 0 }}>Lead</div>
+            </div>
+            <h1 className="at-h1 tight">{activeLead.name}</h1>
+            <p className="at-sub">
+              {[activeLead.role, activeLead.company].filter(Boolean).join(" · ") || "No role or company on file"}
+              {activeLead.contact ? ` · ${activeLead.contact}` : ""}
+            </p>
+
+            <div className="at-sec">Status</div>
+            <div className="at-tabs">
+              {LEAD_STATUSES.map((s) => (
+                <button key={s} className={"at-tab" + (activeLead.status === s ? " on" : "")}
+                  onClick={() => setLeadStatus(activeLead, s)}>
+                  {s[0].toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {activeLead.brief ? (
+              <>
+                <div className="at-ring">
+                  <Ring value={Math.round(activeLead.brief.priority || 0)} max={100} size={168} />
+                  <div className="lbl">Priority</div>
+                </div>
+                <div className="at-card" style={{ marginTop: 20 }}>
+                  <h3>Overview</h3>
+                  <p style={{ marginBottom: 14 }}>{activeLead.brief.overview}</p>
+                  {activeLead.brief.fit && <div className="at-bullet"><span className="b">→</span><span>{activeLead.brief.fit}</span></div>}
+                  {activeLead.brief.angle && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+                      <div className="at-sec" style={{ margin: "0 0 6px" }}>Opening angle</div>
+                      <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.5 }}>{activeLead.brief.angle}</div>
+                    </div>
+                  )}
+                  {(activeLead.brief.risks || []).map((r, i) => (
+                    <div className="at-bullet" key={i} style={{ marginTop: 10 }}><span className="b">!</span><span>{r}</span></div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="at-card">
+                <p style={{ marginBottom: 14 }}>{activeLead.notes || "No notes yet."}</p>
+                <button className="at-btn" disabled={leadBusy === "brief"} onClick={() => briefLead(activeLead)}>
+                  <Sparkles size={15} />{leadBusy === "brief" ? "Briefing…" : "Generate brief"}
+                </button>
+              </div>
+            )}
+            {leadBusy === "brief" && <LoadingDots label="Researching this lead" />}
+
+            <div className="at-sec">Follow-up sequence</div>
+            {!activeLead.sequence && leadBusy !== "seq" && (
+              <div className="at-card">
+                <p style={{ marginBottom: 14 }}>A multi-touch cadence that gets shorter each step and always gives them an exit.</p>
+                <button className="at-btn" onClick={() => sequenceLead(activeLead)}>
+                  <Send size={15} />Generate follow-ups
+                </button>
+              </div>
+            )}
+            {leadBusy === "seq" && <LoadingDots label="Writing the follow-up cadence" />}
+            {activeLead.sequence && leadBusy !== "seq" && (
+              <>
+                {(activeLead.sequence.sequence || []).map((s, i) => (
+                  <div className="at-msg" key={i}>
+                    <div className="ch">Step {s.step} · {s.when} · {s.channel}</div>
+                    {s.subject && <div className="sj">{s.subject}</div>}
+                    <div className="bd">{s.body}</div>
+                    <button className="at-btn at-btn-ghost" style={{ marginTop: 12 }}
+                      onClick={() => { navigator.clipboard.writeText((s.subject ? s.subject + "\n\n" : "") + s.body).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
+                      <Copy size={14} />Copy step {s.step}
+                    </button>
+                  </div>
+                ))}
+                {activeLead.sequence.cadence_note && (
+                  <div className="at-card">
+                    <div className="at-kicker"><Sparkles size={13} /> Cadence logic</div>
+                    <p>{activeLead.sequence.cadence_note}</p>
+                  </div>
+                )}
+                <div className="at-stack">
+                  <button className="at-btn at-btn-ghost" onClick={() => sequenceLead(activeLead)}>
+                    <RefreshCw size={15} />Regenerate
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
         {/* ---------- RELATIONSHIP GRAPH ---------- */}
         {view === "graph" && (
           <>
@@ -1102,6 +1381,72 @@ export default function App() {
                     </div>
                   )}
                 </div>
+
+                {/* ---- live opportunity scan ---- */}
+                <div className="at-sec">What's open right now</div>
+                {!scans[active.id] && !scanLoading && (
+                  <div className="at-card">
+                    <p style={{ marginBottom: 14 }}>
+                      Discovery told you <strong>who</strong> to approach. Scan {active.name} to find <strong>what</strong> is actually open there — applications, tracks, and rounds you can act on today.
+                    </p>
+                    <button className="at-btn" onClick={() => runScan(active)}><Radar size={15} />Scan for live openings</button>
+                  </div>
+                )}
+                {scanLoading && <LoadingDots label={"Scanning " + active.name + " for current openings"} />}
+                {scans[active.id] && !scanLoading && (
+                  <>
+                    <div className="at-card">
+                      <div className="at-kicker">
+                        <Radar size={13} />
+                        {scans[active.id].searchMode === "live" ? "Live scan · verified sources" : "Inferred scan · confirm before acting"}
+                      </div>
+                      <p>{scans[active.id].summary || scans[active.id].error}</p>
+                    </div>
+                    {(scans[active.id].openings || []).map((op, i) => (
+                      <div className="at-opp" key={i} style={{ cursor: "default" }}>
+                        <div className="sc" style={{ background: op.confidence === "verified" ? "var(--tile-g)" : "var(--tile-y)", width: 56 }}>
+                          <span className="l" style={{ fontSize: 8, marginTop: 0 }}>
+                            {op.confidence === "verified" ? "VERIFIED" : "INFERRED"}
+                          </span>
+                        </div>
+                        <div className="bd">
+                          <div className="kd">{op.status_label || op.status}</div>
+                          <div className="nm">{op.title}</div>
+                          <div className="wy">{op.action}</div>
+                          {op.deadline && (
+                            <div style={{ fontSize: 12.5, color: "var(--ink3)", marginTop: 5 }}>Deadline: {op.deadline}</div>
+                          )}
+                          {op.url && (
+                            <a href={op.url} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 12.5, color: "#0F1613", marginTop: 5, display: "inline-block" }}>
+                              source ↗
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {scans[active.id].next_step && (
+                      <div className="at-card">
+                        <div className="at-sec" style={{ margin: "0 0 6px" }}>Best next step</div>
+                        <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.5 }}>{scans[active.id].next_step}</div>
+                      </div>
+                    )}
+                    {(scans[active.id].where_to_check || []).length > 0 && (
+                      <div className="at-card">
+                        <h3>Where to confirm</h3>
+                        {scans[active.id].where_to_check.map((u, i) => (
+                          <div className="at-bullet" key={i}>
+                            <span className="b">·</span>
+                            <a href={u} target="_blank" rel="noreferrer" style={{ color: "#0F1613", wordBreak: "break-all" }}>{u}</a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button className="at-btn at-btn-ghost" onClick={() => runScan(active)} style={{ marginBottom: 4 }}>
+                      <RefreshCw size={15} />Re-scan
+                    </button>
+                  </>
+                )}
 
                 <div className="at-sec">Outreach</div>
                 <div className="at-chans">

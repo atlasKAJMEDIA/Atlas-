@@ -27,6 +27,8 @@ funded wallet, or a deployed contract address to switch from simulated to live.
 | **Multi-chain architecture** | `lib/chains.js` registry with Robinhood testnet/mainnet plus all 10 spec'd expansion targets declared and gated. |
 | **Free demo mode** | Every feature runs at $0 with no key. See "AI provider" below. |
 | **Outreach drafting** | All 6 channels, channel-native copy. |
+| **Live opportunity scan** | After discovery names *who* to approach, `/api/scan` answers *what is open there right now* — applications, tracks, and rounds, each with status, deadline, and next action. With a search key it runs a real web search and marks results `verified` with source URLs; without one it marks everything `inferred` and surfaces the real links to confirm against. The distinction is visible in the UI, so inferred results are never mistaken for confirmed listings. |
+| **Lead lists + follow-up engine** | Paste a CSV/TSV list (header auto-detected) or add leads one at a time. Atlas generates a per-lead brief — overview, fit, priority score, opening angle, and risks — then builds a 4-step follow-up cadence that shortens each touch and always gives an explicit exit. Per-step copy, six-stage lead status, fully persisted. |
 
 ---
 
@@ -41,6 +43,7 @@ No code changes required.
 | **Outreach sending** | Per-channel env vars | `RESEND_API_KEY`+`OUTREACH_FROM_EMAIL` (email), `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID`, `DISCORD_WEBHOOK_URL`, `NEYNAR_API_KEY`+`NEYNAR_SIGNER_UUID` (Farcaster). `/api/outreach` reports exactly which var each channel is missing instead of silently no-opping. |
 | **X / LinkedIn sending** | OAuth flow | These need per-user OAuth, not a static key — declared and surfaced as such rather than pretending. |
 | **Live AI model** | `VIRTUALS_API_KEY` | Optional; demo mode covers demonstrations for free. |
+| **Verified opportunity scanning** | `SERPER_API_KEY` or `TAVILY_API_KEY` | Turns the scanner from inferred to real-web-search-backed. Without it the feature still works and says so plainly. |
 | **WalletConnect / Coinbase** | `NEXT_PUBLIC_WC_PROJECT_ID` | Injected wallets (MetaMask, Rabby) connect for real today. |
 
 ---
