@@ -2,10 +2,10 @@
 pragma solidity ^0.8.24;
 
 /*
- * Atlas — extended on-chain registries for Robinhood Chain.
+ * Helix — extended on-chain registries for Robinhood Chain.
  *
  * Completes the 10-contract set named in the product spec. The first six live
- * in AtlasRegistries.sol; these are the remaining four:
+ * in HelixRegistries.sol; these are the remaining four:
  *
  *   ProposalRegistry     — governance proposals & voting
  *   IdentityRegistry     — verifiable handles/attestations per organization
@@ -216,7 +216,7 @@ contract NotificationRegistry {
 /* ------------------------------------------------------------------ */
 contract ActivityRegistry {
     /*
-     * Append-only activity log — the on-chain counterpart to Atlas's AI Memory.
+     * Append-only activity log — the on-chain counterpart to Helix's AI Memory.
      * Records what an org did (outreach sent, grant applied, partnership moved)
      * so recommendations and reputation can be derived from verifiable history
      * rather than self-reported state.

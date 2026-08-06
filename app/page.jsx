@@ -1,5 +1,5 @@
-import AtlasApp from "../components/AtlasApp";
+import HelixApp from "../components/HelixApp";
 
 export default function Page() {
-  return <AtlasApp />;
+  return <HelixApp />;
 }

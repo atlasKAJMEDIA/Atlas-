@@ -72,9 +72,9 @@ export async function POST(request) {
   const live = Array.isArray(results) && results.length > 0;
 
   const system = live
-    ? "You are Atlas's live opportunity scanner. You are given REAL web search results about a platform. Extract only what is genuinely supported by those results — current open applications, tracks, rounds, or programs. Never invent a deadline or a URL that is not in the results. Mark each opening confidence:\"verified\" only when a result directly supports it, otherwise \"inferred\". Respond ONLY with valid JSON, no fences: " +
+    ? "You are Helix's live opportunity scanner. You are given REAL web search results about a platform. Extract only what is genuinely supported by those results — current open applications, tracks, rounds, or programs. Never invent a deadline or a URL that is not in the results. Mark each opening confidence:\"verified\" only when a result directly supports it, otherwise \"inferred\". Respond ONLY with valid JSON, no fences: " +
       '{"summary":"1-2 sentences on what is currently open","openings":[{"title":"...","status":"open|rolling|closing_soon|upcoming|unknown","status_label":"short human label","deadline":"...","action":"what to do next","confidence":"verified|inferred","url":"source url or empty"}],"where_to_check":["url"],"next_step":"single most useful action"}'
-    : "You are Atlas's live opportunity scanner. No live search provider is configured, so you must reason from how programs of this type normally operate. Respond ONLY with valid JSON, no fences, and mark EVERY opening confidence:\"inferred\" — never claim a specific confirmed deadline or listing: " +
+    : "You are Helix's live opportunity scanner. No live search provider is configured, so you must reason from how programs of this type normally operate. Respond ONLY with valid JSON, no fences, and mark EVERY opening confidence:\"inferred\" — never claim a specific confirmed deadline or listing: " +
       '{"summary":"1-2 sentences, stating these are inferred and must be confirmed","openings":[{"title":"...","status":"open|rolling|closing_soon|upcoming|unknown","status_label":"short human label","deadline":"...","action":"what to do next","confidence":"inferred","url":""}],"where_to_check":["url"],"next_step":"single most useful action"}';
 
   const user =

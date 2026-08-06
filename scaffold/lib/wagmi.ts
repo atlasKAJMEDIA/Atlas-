@@ -7,7 +7,7 @@ export const wagmiConfig = createConfig({
   chains: [robinhoodTestnet],
   connectors: [
     injected(),
-    coinbaseWallet({ appName: "Atlas" }),
+    coinbaseWallet({ appName: "Helix" }),
     walletConnect({ projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID as string }),
   ],
   transports: {

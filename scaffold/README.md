@@ -1,10 +1,10 @@
-# Atlas — Robinhood Chain scaffold
+# Helix — Robinhood Chain scaffold
 
-On-chain backend + config for Atlas, the BD Operating System for Robinhood Chain.
-The front-end (`atlas_app.jsx`) is the product UI; this folder is what makes it real.
+On-chain backend + config for Helix, the BD Operating System for Robinhood Chain.
+The front-end (`helix_app.jsx`) is the product UI; this folder is what makes it real.
 
 ## What's here
-- `contracts/AtlasRegistries.sol` — 6 core registries (Project, Organization, Partnership, Grant, Investor, Reputation). Self-contained, no external deps — builds with plain Foundry.
+- `contracts/HelixRegistries.sol` — 6 core registries (Project, Organization, Partnership, Grant, Investor, Reputation). Self-contained, no external deps — builds with plain Foundry.
 - `script/DeployAll.s.sol` — deploys all six and prints their addresses.
 - `foundry.toml` — Robinhood testnet/mainnet RPC + explorer config.
 - `.env.local.example` — environment template for the Next.js app.
@@ -31,7 +31,7 @@ cp .env.local.example .env.local
 # paste the deployed addresses + your WalletConnect project id into .env.local
 ```
 Then in your Next.js app, wrap the tree in WagmiProvider using `wagmiConfig` from `lib/wagmi.ts`,
-and replace the simulated wallet + simulated tx calls in `atlas_app.jsx` with real wagmi hooks
+and replace the simulated wallet + simulated tx calls in `helix_app.jsx` with real wagmi hooks
 (`useAccount`, `useWriteContract`) pointed at `CONTRACTS.*`.
 
 ## Sanity checks (cast)

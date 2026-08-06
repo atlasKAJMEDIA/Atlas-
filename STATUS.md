@@ -1,6 +1,6 @@
-# Atlas — build status against the spec
+# Helix — build status against the spec
 
-Audited against `Atlas on Robinhood Chain` (the product PDF — both uploaded copies are
+Audited against `Helix on Robinhood Chain` (the product PDF — both uploaded copies are
 byte-identical, so there is one spec, not two).
 
 **Summary:** the product surface is complete, and the two structural gaps from the last
@@ -28,7 +28,7 @@ funded wallet, or a deployed contract address to switch from simulated to live.
 | **Free demo mode** | Every feature runs at $0 with no key. See "AI provider" below. |
 | **Outreach drafting** | All 6 channels, channel-native copy. |
 | **Live opportunity scan** | After discovery names *who* to approach, `/api/scan` answers *what is open there right now* — applications, tracks, and rounds, each with status, deadline, and next action. With a search key it runs a real web search and marks results `verified` with source URLs; without one it marks everything `inferred` and surfaces the real links to confirm against. The distinction is visible in the UI, so inferred results are never mistaken for confirmed listings. |
-| **Lead lists + follow-up engine** | Paste a CSV/TSV list (header auto-detected) or add leads one at a time. Atlas generates a per-lead brief — overview, fit, priority score, opening angle, and risks — then builds a 4-step follow-up cadence that shortens each touch and always gives an explicit exit. Per-step copy, six-stage lead status, fully persisted. |
+| **Lead lists + follow-up engine** | Paste a CSV/TSV list (header auto-detected) or add leads one at a time. Helix generates a per-lead brief — overview, fit, priority score, opening angle, and risks — then builds a 4-step follow-up cadence that shortens each touch and always gives an explicit exit. Per-step copy, six-stage lead status, fully persisted. |
 
 ---
 
@@ -53,7 +53,7 @@ No code changes required.
 | Gap | Note |
 |---|---|
 | **Deep per-project indexing** | The index covers chain config, official entry points, and live chain head. It does **not** yet crawl per-project deployments, GitHub activity per team, a grant calendar, governance proposals, or profile-view tracking. Those need a scheduled crawler + storage, and some need sources that don't publicly exist yet (there is no public Robinhood Chain grants portal — the developer group is the documented route). |
-| **Automatic project understanding** | Spec wants Atlas to read your website, docs, GitHub, whitepaper, and socials automatically. Today the founder types a description. `IdentityRegistry` provides the on-chain half (handle claims + attestation); the crawler is not built. |
+| **Automatic project understanding** | Spec wants Helix to read your website, docs, GitHub, whitepaper, and socials automatically. Today the founder types a description. `IdentityRegistry` provides the on-chain half (handle claims + attestation); the crawler is not built. |
 | **Server-side multi-user storage** | Persistence is per-browser. Shared team state needs a database and wallet auth. |
 | **Expansion chains** | Declared in `lib/chains.js`, no indexers built. |
 
@@ -61,10 +61,10 @@ No code changes required.
 
 ## Note on the AI provider & demo mode
 
-Atlas does **not** call the Anthropic API and is not billed by Anthropic. Two modes, resolved
+Helix does **not** call the Anthropic API and is not billed by Anthropic. Two modes, resolved
 per request in `app/api/claude/route.js`:
 
-- **Demo mode (free).** No `VIRTUALS_API_KEY`, or `ATLAS_DEMO_MODE=1` → realistic,
+- **Demo mode (free).** No `VIRTUALS_API_KEY`, or `HELIX_DEMO_MODE=1` → realistic,
   input-tailored content generated locally. Zero cost. Recommended for demonstrations.
 - **Live mode.** With a key, calls the **Virtuals compute gateway** (`compute.virtuals.io/v1`),
   which fronts Claude behind an OpenAI-compatible `/chat/completions` endpoint. Model defaults

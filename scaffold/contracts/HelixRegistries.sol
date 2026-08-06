@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 /*
- * Atlas — BD Operating System for Robinhood Chain
+ * Helix — BD Operating System for Robinhood Chain
  * Core on-chain registries. Self-contained (no external deps) so it
  * builds with a plain `forge build`. Swap in OpenZeppelin later if you
  * want ERC721 Organization NFTs / Ownable / AccessControl.

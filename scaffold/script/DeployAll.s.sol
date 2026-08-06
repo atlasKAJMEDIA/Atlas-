@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
-import "../contracts/AtlasRegistries.sol";
-import "../contracts/AtlasExtendedRegistries.sol";
+import "../contracts/HelixRegistries.sol";
+import "../contracts/HelixExtendedRegistries.sol";
 
 contract DeployAll is Script {
     function run() external {

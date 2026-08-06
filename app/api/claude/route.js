@@ -1,4 +1,4 @@
-/* Atlas AI proxy.
+/* Helix AI proxy.
  *
  * Thin wrapper over lib/ai-server.js, which owns the demo/live resolution.
  * Keeps the API key server-side — it never reaches the browser.
