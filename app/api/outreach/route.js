@@ -139,6 +139,22 @@ export async function POST(request) {
     );
   }
 
+  // Email is the one channel that needs a recipient; catch an empty one early
+  // with a clear message instead of letting the provider fail cryptically.
+  if (channel === "Email" && !(to && String(to).includes("@"))) {
+    return Response.json(
+      { sent: false, configured: true, reason: "This lead has no email address on file. Add one to send." },
+      { status: 200 }
+    );
+  }
+
+  if (!body || !String(body).trim()) {
+    return Response.json(
+      { sent: false, configured: true, reason: "Nothing to send — the message body is empty." },
+      { status: 200 }
+    );
+  }
+
   try {
     const result = await driver.send({ to, subject, body });
     return Response.json({ sent: true, configured: true, channel, ...result });

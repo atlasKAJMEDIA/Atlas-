@@ -86,10 +86,16 @@ export async function POST(request) {
 
   const ai = await runAI({ system, user });
 
+  // "live" only when we had real results AND the model actually read them.
+  // If the AI resolved to demo/fallback content, the openings weren't extracted
+  // from the sources, so we must not label them verified — even though the
+  // (real) source links are still worth returning for the user to confirm.
+  const trulyLive = live && !ai.demo;
+
   return Response.json({
     text: ai.text,
     demo: ai.demo || false,
-    searchMode: live ? "live" : "inferred",
+    searchMode: trulyLive ? "live" : "inferred",
     searchProvider: process.env.SERPER_API_KEY ? "serper" : process.env.TAVILY_API_KEY ? "tavily" : null,
     searchError,
     sources: live ? results.slice(0, 5) : [],
