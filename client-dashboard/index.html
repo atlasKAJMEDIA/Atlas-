@@ -409,7 +409,7 @@ const RANGES=[["day","Day",1],["week","Week",7],["month","Month",30],["quarter",
 
 /* ===================== STATE ===================== */
 let state={clients:[],members:[],activity:[],meta:{}};
-let cap=null, readOnly=false;
+let cap=null, readOnly=false, MODE="artifact"; // "artifact" (inside Claude) | "local" (hosted / standalone)
 let me={name:"",role:"team",clientId:null,color:"#4c8dff"};
 let ui={view:"overview",clientId:null,tab:"overview",range:"month",railOpen:false};
 let saveTimer=null;
@@ -430,9 +430,16 @@ function initials(n){return(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).
 
 /* ===================== PERSISTENCE ===================== */
 async function boot(){
-  try{const r=await fetch("data/state.json",{cache:"no-store"});if(r.ok){const d=await r.json();if(d&&Array.isArray(d.clients)){state=d;state.members=state.members||[];state.activity=state.activity||[];}}}catch(e){}
   try{cap=await(window.claude&&window.claude.use?window.claude.use("artifact"):Promise.resolve(null));}catch(e){cap=null;}
-  if(!cap)readOnly=true;
+  MODE=cap?"artifact":"local";
+  if(MODE==="artifact"){
+    try{const r=await fetch("data/state.json",{cache:"no-store"});if(r.ok){const d=await r.json();if(d&&Array.isArray(d.clients)){state=d;state.members=state.members||[];state.activity=state.activity||[];}}}catch(e){}
+  }else{
+    // hosted / standalone (e.g. Vercel): persist to this browser
+    try{const raw=localStorage.getItem("kaj_state");if(raw){const d=JSON.parse(raw);if(d&&Array.isArray(d.clients)){state=d;state.members=state.members||[];state.activity=state.activity||[];}}}catch(e){}
+    if(!state.clients.length){try{const r=await fetch("data/state.json",{cache:"no-store"});if(r.ok){const d=await r.json();if(d&&Array.isArray(d.clients)&&d.clients.length){state=d;state.members=state.members||[];state.activity=state.activity||[];}}}catch(e){}}
+    readOnly=false;
+  }
   const th=localStorage.getItem("kaj_theme");if(th)document.documentElement.setAttribute("data-theme",th);
   try{const sv=localStorage.getItem("kaj_ui");if(sv)ui=Object.assign(ui,JSON.parse(sv));}catch(e){}
   const id=localStorage.getItem("kaj_identity");
@@ -446,6 +453,7 @@ function scheduleSave(){
   clearTimeout(saveTimer);saveTimer=setTimeout(doSave,900);
 }
 async function doSave(){
+  if(MODE==="local"){try{localStorage.setItem("kaj_state",JSON.stringify(state));setSync("saved");}catch(e){setSync("error");}return;}
   if(!cap){setSync("readonly");return;}
   try{await cap.publish({"data/state.json":{content:JSON.stringify(state),contentType:"application/json"}});setSync("saved");}
   catch(err){const c=err&&err.code;
@@ -456,7 +464,8 @@ async function doSave(){
   }
 }
 function setSync(s){const d=$("#syncDot"),t=$("#syncText");if(!d)return;d.className="sd";
-  const m={saved:["Synced",""],saving:["Syncing…","saving"],readonly:["View only","err"],error:["Sync failed","err"]}[s]||["Synced",""];
+  const savedTxt=MODE==="local"?"Saved on this device":"Synced";
+  const m={saved:[savedTxt,""],saving:["Saving…","saving"],readonly:["View only","err"],error:["Save failed","err"]}[s]||[savedTxt,""];
   t.textContent=m[0];if(m[1])d.classList.add(m[1]);}
 
 /* record + attribute changes */
