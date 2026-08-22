@@ -318,6 +318,7 @@ table.log tr:hover td{background:var(--sunken)}
   .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:35;display:none}.scrim.on{display:block}
 }
 .menubtn{display:none}
+.scrim{display:none} /* desktop: keep scrim out of the grid flow (mobile media query re-enables it) */
 </style>
 </head>
 <body>
@@ -437,7 +438,6 @@ async function boot(){
   }else{
     // hosted / standalone (e.g. Vercel): persist to this browser
     try{const raw=localStorage.getItem("kaj_state");if(raw){const d=JSON.parse(raw);if(d&&Array.isArray(d.clients)){state=d;state.members=state.members||[];state.activity=state.activity||[];}}}catch(e){}
-    if(!state.clients.length){try{const r=await fetch("data/state.json",{cache:"no-store"});if(r.ok){const d=await r.json();if(d&&Array.isArray(d.clients)&&d.clients.length){state=d;state.members=state.members||[];state.activity=state.activity||[];}}}catch(e){}}
     readOnly=false;
   }
   const th=localStorage.getItem("kaj_theme");if(th)document.documentElement.setAttribute("data-theme",th);
@@ -571,6 +571,10 @@ function renderAvatars(){
 function renderOverview(v){
   setHead("Agency Overview","Live business & client KPIs across "+visibleClients().length+" clients.");
   const d=rangeDays();
+  if(!visibleClients().length){
+    if(readOnly)v.appendChild(el("div","banner",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span><b>Read-only view.</b> Explore freely — edits won\'t save from this view.</span>'));
+    v.appendChild(buildEmpty());return;
+  }
   // range control row
   const bar=el("div");bar.style.cssText="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px";
   const seg=el("div","seg");RANGES.forEach(([k,lab])=>{const b=el("button",k===ui.range?"on":"",lab);b.onclick=()=>{ui.range=k;render();};seg.appendChild(b);});
@@ -700,8 +704,8 @@ function renderClient(v,c){
     ${c.offerTier?`<span class="tg">${esc(c.offerTier)}</span>`:''}${c.retainer?`<span class="tg">${rupee(c.retainer)}/mo</span>`:''}<span class="tg">${esc(c.owner||'Unassigned')}</span></div></div></div>
     <div class="actions"></div>`;
   if(me.role!=="client"&&!readOnly){
-    const eb=el("button","btn",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Edit');eb.onclick=()=>openEditModal(c);
-    const db=el("button","btn danger",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>');db.onclick=()=>confirmDelete(c);
+    const eb=el("button","btn",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Edit');eb.id="editBtn";eb.onclick=()=>openEditModal(c);
+    const db=el("button","btn danger",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>');db.id="delBtn";db.onclick=()=>confirmDelete(c);
     head.querySelector(".actions").append(eb,db);
   }
   v.appendChild(head);
@@ -979,6 +983,11 @@ $("#themeBtn").onclick=()=>{const cur=document.documentElement.getAttribute("dat
 function openRail(){$("#rail").classList.add("open");$("#scrim").classList.add("on");}function closeRail(){$("#rail").classList.remove("open");$("#scrim").classList.remove("on");}
 $("#menuBtn").onclick=openRail;$("#scrim").onclick=closeRail;
 let tt;function toast(m){const t=$("#toast");t.innerHTML=`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>${esc(m)}`;t.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("on"),2400);}
+
+/* flush unsaved local changes if the tab closes within the save debounce window */
+function flushLocal(){if(MODE==="local"){try{localStorage.setItem("kaj_state",JSON.stringify(state));}catch(e){}}}
+window.addEventListener("beforeunload",flushLocal);
+window.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushLocal();});
 
 boot();
 })();
